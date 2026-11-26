@@ -237,14 +237,6 @@ public class SectionActivity extends Activity {
             public void onClick(View v) { takePhoto(f.key); }
         });
         actions.addView(cam);
-        TextView gal = Ui.pill(this, "🖼  Gallery", form.color, Ui.PRIMARY_LIGHT);
-        gal.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) { pickFromGallery(f.key); }
-        });
-        LinearLayout.LayoutParams glp = wrapLp(0);
-        glp.leftMargin = Ui.dp(this, 8);
-        actions.addView(gal, glp);
         TextView mic = Ui.pill(this, "🎤  Comment", form.color, Ui.PRIMARY_LIGHT);
         LinearLayout.LayoutParams mlp = wrapLp(0);
         mlp.leftMargin = Ui.dp(this, 8);
@@ -561,28 +553,30 @@ public class SectionActivity extends Activity {
         card.addView(hs, Ui.matchWrap(this, 10));
 
         LinearLayout actions = Ui.hbox(this);
-        Button cam = Ui.button(this, "📷  Take photo", form.color, !Forms.GENERAL.equals(form.id));
+        Button cam = Ui.button(this, "📷  Take photo", form.color, Forms.GENERAL.equals(form.id) || insp.id.startsWith("_"));
         cam.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) { takePhoto(section.key); }
         });
         actions.addView(cam, Ui.weight(this, 1.2f, 3));
-        Button gal = Ui.button(this, "🖼  Gallery", form.color, false);
-        gal.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) { pickFromGallery(section.key); }
-        });
-        actions.addView(gal, Ui.weight(this, 1f, 3));
-        card.addView(actions, Ui.matchWrap(this, 10));
-
-        if (!isGeneral) {
-            Button reuse = Ui.button(this, "♻  Reuse photos from General Inspection", form.color, false);
+        if (insp.id.startsWith("_")) {
+            // company logo: the only place a file from the phone is used
+            Button gal = Ui.button(this, "🖼  Choose file", form.color, false);
+            gal.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) { pickFromGallery(section.key); }
+            });
+            actions.addView(gal, Ui.weight(this, 1f, 3));
+        } else if (!isGeneral) {
+            // 4-Point and Wind pull from this inspection's own photos, never the phone's files
+            Button reuse = Ui.button(this, "♻  Inspection photos", form.color, true);
             reuse.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) { showReusePicker(); }
             });
-            card.addView(reuse, Ui.matchWrap(this, 8));
+            actions.addView(reuse, Ui.weight(this, 1.2f, 3));
         }
+        card.addView(actions, Ui.matchWrap(this, 10));
         return card;
     }
 
@@ -734,6 +728,11 @@ public class SectionActivity extends Activity {
         File f = insp.originalFile(pendingPhoto);
         Uri uri = FileShareProvider.uriFor(this, f);
         Intent i = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        // Ask for the rear camera. Camera apps read different extras, so set the common ones.
+        i.putExtra("android.intent.extras.CAMERA_FACING", 0);
+        i.putExtra("android.intent.extras.LENS_FACING_BACK", 1);
+        i.putExtra("android.intent.extra.USE_FRONT_CAMERA", false);
+        i.putExtra("com.google.assistant.extra.USE_FRONT_CAMERA", false);
         i.putExtra(MediaStore.EXTRA_OUTPUT, uri);
         i.setClipData(ClipData.newRawUri("photo", uri));
         i.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION);
@@ -846,7 +845,7 @@ public class SectionActivity extends Activity {
         if (offered.isEmpty()) {
             box.addView(Ui.body(this, "No General Inspection photos."));
         }
-        new AlertDialog.Builder(this).setTitle("Reuse photos from General")
+        new AlertDialog.Builder(this).setTitle("Inspection photos")
                 .setView(sv)
                 .setPositiveButton("Done", new DialogInterface.OnClickListener() {
                     @Override

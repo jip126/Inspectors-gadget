@@ -195,6 +195,8 @@ public class AppTest {
         photoPill.performClick();
         org.robolectric.shadows.ShadowActivity.IntentForResult camReq = Shadows.shadowOf(ext).getNextStartedActivityForResult();
         assertEquals(android.provider.MediaStore.ACTION_IMAGE_CAPTURE, camReq.intent.getAction());
+        assertEquals(0, camReq.intent.getIntExtra("android.intent.extras.CAMERA_FACING", -1)); // rear camera
+        assertNull("no phone gallery in General", findText(ext.getWindow().getDecorView(), "🖼"));
         String newPid = null;
         for (java.util.Iterator<String> it = in.photoMeta().keys(); it.hasNext(); ) {
             String p = it.next();
@@ -231,6 +233,15 @@ public class AppTest {
                 assertFalse(s.key, a.isFinishing());
             }
         }
+
+        // 4-Point and Wind pick only from this inspection's photos
+        Activity fpRoof = start(SectionActivity.class, new Intent().putExtra(SectionActivity.EXTRA_INSPECTION, id)
+                .putExtra(SectionActivity.EXTRA_SECTION, "fp.roof"));
+        assertNull(findText(fpRoof.getWindow().getDecorView(), "🖼"));
+        findText(fpRoof.getWindow().getDecorView(), "♻  Inspection photos").performClick();
+        android.app.AlertDialog picker = (android.app.AlertDialog) org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog();
+        assertTrue(picker.isShowing());
+        picker.dismiss();
 
         // Import all in 4-Point electrical
         Activity sec = start(SectionActivity.class, new Intent().putExtra(SectionActivity.EXTRA_INSPECTION, id)
