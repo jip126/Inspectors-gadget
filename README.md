@@ -7,7 +7,20 @@ Android app for home inspectors:
 3. **4-Point inspection.** Reuses the General photos and answers.
 4. **Wind mitigation.** Follows OIR-B1-1802 Rev. 01/12. Answers are suggested from the General findings.
 
+5. **E-signature.** Sends the agreement to the client for remote signing through BoldSign or DocuSign. The signed PDF and status come back into the inspection automatically.
+6. **Subscriptions.** One free trial inspection, then a monthly or annual subscription. Demo inspections can be explored but not exported.
+
 There is a company profile (with an optional logo) and a roster of inspectors (license type and number, issuing body, expiry, saved signature). The selected inspector's details go on every report. Reports export as PDFs, and photos are compressed so the files fit in an email.
+
+## Online services
+
+Everything online goes through the relay in [`backend/`](backend/README.md), which holds the e-signature and Google Play credentials. With `Config.RELAY_URL` empty (the default) the app runs in demo mode: e-signature requests are simulated on the device (the client "signs" after 20 seconds) and purchases are simulated with no charge.
+
+| Piece | App | Backend |
+| --- | --- | --- |
+| E-signature | `ESign` (provider-agnostic), `RelayClient` | `src/esign/boldsign.js`, `src/esign/docusign.js` |
+| Trial and subscription | `Account`, `Billing`, `PaywallActivity` | `/v1/subscriptions/play`, Play notifications |
+| Settings | `Config` | `wrangler.toml` and secrets |
 
 ## Build
 

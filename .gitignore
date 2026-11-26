@@ -8,3 +8,6 @@ test/androidall/
 test/out/
 test/tclasses/
 test/stubclasses/
+backend/node_modules/
+backend/.wrangler/
+backend/.dev.vars

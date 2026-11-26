@@ -1,0 +1,12 @@
+{
+  "name": "inspectors-gadget-relay",
+  "private": true,
+  "type": "module",
+  "description": "Backend relay for Inspector's Gadget: accounts, subscriptions and e-signature (BoldSign or DocuSign).",
+  "scripts": {
+    "test": "node --test --no-warnings test/*.test.js",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:init": "wrangler d1 execute inspectors-gadget --remote --file=schema.sql"
+  }
+}

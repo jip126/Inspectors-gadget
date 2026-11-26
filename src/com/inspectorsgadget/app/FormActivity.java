@@ -49,6 +49,7 @@ public class FormActivity extends Activity {
         if (!Forms.GENERAL.equals(form.id) && Logic.prefillForm(insp, form.id) > 0) changed = true;
         if (changed) Store.save(insp);
         build();
+        if (Forms.AGREEMENT.equals(form.id) && ESign.pending(insp)) checkESign(false);
     }
 
     private void build() {
@@ -160,12 +161,28 @@ public class FormActivity extends Activity {
     private static final int PICK_SIGNED = 41;
 
     private void agreementButtons(LinearLayout content) {
-        Button send = Ui.button(this, "✉  Send agreement to client", form.color, true);
+        boolean isSigned = Agreement.status(insp) == Agreement.SIGNED;
+        if (ESign.pending(insp)) {
+            Button check = Ui.button(this, "↻  Check e-signature status", form.color, true);
+            check.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) { checkESign(true); }
+            });
+            content.addView(check, Ui.matchWrap(this, 4));
+        } else if (!isSigned) {
+            Button esign = Ui.button(this, "✍  Send for e-signature", form.color, true);
+            esign.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) { sendForESignature(); }
+            });
+            content.addView(esign, Ui.matchWrap(this, 4));
+        }
+        Button send = Ui.button(this, "✉  Send agreement by email", form.color, false);
         send.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) { buildAgreement(true); }
         });
-        content.addView(send, Ui.matchWrap(this, 4));
+        content.addView(send, Ui.matchWrap(this, 8));
         Button prev = Ui.button(this, "📄  Preview agreement (PDF)", form.color, false);
         prev.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -202,7 +219,78 @@ public class FormActivity extends Activity {
         }
     }
 
+    private boolean exportAllowed() {
+        if (Account.canExport(this, insp)) return true;
+        PaywallActivity.open(this, PaywallActivity.REASON_LOCKED);
+        return false;
+    }
+
+    private void sendForESignature() {
+        if (!exportAllowed()) return;
+        if (!insp.str("info.email").contains("@")) {
+            Toast.makeText(this, "No client email on file", Toast.LENGTH_LONG).show();
+            return;
+        }
+        final android.app.ProgressDialog pd = android.app.ProgressDialog.show(this, null, "Sending for e-signature…", true, false);
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                String err = null;
+                try {
+                    List<ESign.Field> fields = new java.util.ArrayList<>();
+                    java.io.File pdf = Agreement.createPdf(FormActivity.this, insp, fields);
+                    ESign.sendAgreement(FormActivity.this, insp, pdf, fields);
+                } catch (Throwable t) {
+                    android.util.Log.e("InspectorsGadget", "e-signature send failed", t);
+                    err = t.getMessage() != null ? t.getMessage() : "Could not send for e-signature";
+                }
+                final String error = err;
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            pd.dismiss();
+                        } catch (Exception ignored) {
+                        }
+                        Toast.makeText(FormActivity.this, error != null ? error
+                                : "Sent to " + insp.str("info.email"), Toast.LENGTH_LONG).show();
+                        build();
+                    }
+                });
+            }
+        }).start();
+    }
+
+    private void checkESign(final boolean announce) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                String msg = null;
+                boolean changed = false;
+                try {
+                    changed = ESign.refresh(FormActivity.this, insp);
+                    if (Agreement.status(insp) == Agreement.SIGNED) msg = "Agreement signed";
+                    else if (announce) msg = ESign.statusText(insp);
+                } catch (Exception e) {
+                    android.util.Log.w("InspectorsGadget", "e-signature status", e);
+                    if (announce) msg = "Could not reach the e-signature service";
+                }
+                final String m = msg;
+                final boolean ch = changed;
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (isFinishing()) return;
+                        if (m != null && (announce || ch)) Toast.makeText(FormActivity.this, m, Toast.LENGTH_LONG).show();
+                        if (ch) build();
+                    }
+                });
+            }
+        }).start();
+    }
+
     private void buildAgreement(final boolean sendIt) {
+        if (!exportAllowed()) return;
         if (sendIt && insp.str("info.email").length() == 0)
             Toast.makeText(this, "No client email on file", Toast.LENGTH_LONG).show();
         final android.app.ProgressDialog pd = android.app.ProgressDialog.show(this, null, "Preparing agreement…", true, false);

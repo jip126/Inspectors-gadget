@@ -20,7 +20,14 @@ public class InspectionActivity extends Activity {
     protected void onCreate(Bundle b) {
         super.onCreate(b);
         insp = Store.get(this, getIntent().getStringExtra(EXTRA_INSPECTION));
-        if (insp == null) finish();
+        if (insp == null) {
+            finish();
+            return;
+        }
+        if (!Account.canOpen(this, insp)) {
+            PaywallActivity.open(this, PaywallActivity.REASON_TRIAL_USED);
+            finish();
+        }
     }
 
     @Override
@@ -36,6 +43,29 @@ public class InspectionActivity extends Activity {
         if (changed) Store.save(insp);
         setTitle(insp.title());
         build();
+        refreshESign();
+    }
+
+    /** Picks up a remote signature that completed while the app was closed. */
+    private void refreshESign() {
+        if (!ESign.pending(insp)) return;
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                boolean changed = false;
+                try {
+                    changed = ESign.refresh(InspectionActivity.this, insp);
+                } catch (Exception e) {
+                    android.util.Log.w("InspectorsGadget", "e-signature status", e);
+                }
+                if (changed) runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (!isFinishing()) build();
+                    }
+                });
+            }
+        }).start();
     }
 
     private void build() {

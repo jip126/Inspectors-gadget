@@ -63,7 +63,10 @@ public class MainActivity extends Activity {
         create.setTextColor(Ui.LOGO_BG);
         create.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View v) { newInspection(); }
+            public void onClick(View v) {
+                if (Account.canCreateInspection(MainActivity.this)) newInspection();
+                else PaywallActivity.open(MainActivity.this, PaywallActivity.REASON_TRIAL_USED);
+            }
         });
         actions.addView(create, Ui.weight(this, 1.2f, 0));
         View gap = new View(this);
@@ -90,6 +93,14 @@ public class MainActivity extends Activity {
             public void onClick(View v) { startActivity(new Intent(MainActivity.this, CompanyActivity.class)); }
         });
         hero.addView(company, Ui.matchWrap(this, 10));
+        boolean pro = Account.isSubscribed(this);
+        Button plan = Ui.button(this, (pro ? "★  " : "☆  ") + Account.summary(this), pro ? Ui.ACCENT : Ui.SILVER, false);
+        plan.setBackground(Ui.rounded(this, 0x00000000, pro ? Ui.ACCENT : 0x55C0C7D0, 10));
+        plan.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) { PaywallActivity.open(MainActivity.this, null); }
+        });
+        hero.addView(plan, Ui.matchWrap(this, 8));
         root.addView(hero);
 
         LinearLayout list = Ui.vbox(this);
@@ -116,6 +127,8 @@ public class MainActivity extends Activity {
                 row.addView(new View(this), new LinearLayout.LayoutParams(Ui.dp(this, 6), 1));
             }
             card.addView(row);
+            if (Account.isSample(in)) card.addView(Ui.pill(this, "Demo", Ui.MUTED, 0xFFEDEFF2), wrapTop(6));
+            else if (!Account.canOpen(this, in)) card.addView(Ui.pill(this, "🔒 Pro", Ui.AMBER, 0xFFFFF4DC), wrapTop(6));
             card.addView(Ui.muted(this, "Updated " + fmt.format(new Date(in.updated()))), Ui.matchWrap(this, 6));
             card.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -134,6 +147,10 @@ public class MainActivity extends Activity {
     }
 
     private void open(Inspection in) {
+        if (!Account.canOpen(this, in)) {
+            PaywallActivity.open(this, PaywallActivity.REASON_TRIAL_USED);
+            return;
+        }
         Intent i = new Intent(this, InspectionActivity.class);
         i.putExtra(InspectionActivity.EXTRA_INSPECTION, in.id);
         startActivity(i);
@@ -164,9 +181,17 @@ public class MainActivity extends Activity {
                         in.setUser("pa.services", new org.json.JSONArray().put(Forms.SERVICES[0]));
                         Company.applyDefault(MainActivity.this, in);
                         Store.save(in);
+                        Account.onInspectionCreated(MainActivity.this, in);
                         open(in);
                     }
                 }).setNegativeButton("Cancel", null).show();
+    }
+
+    private LinearLayout.LayoutParams wrapTop(int top) {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.topMargin = Ui.dp(this, top);
+        return lp;
     }
 
     private void confirmDelete(final Inspection in) {
