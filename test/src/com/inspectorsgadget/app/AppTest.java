@@ -99,6 +99,12 @@ public class AppTest {
         assertEquals(Agreement.SIGNED, Agreement.status(in));
         assertEquals("425.00", in.str("pa.feeTotal"));
         assertTrue(in.list("pa.attend").contains("Real estate agent"));
+        // Intake in the agreement step shares Property & Client Details fields
+        Forms.Section intake = Forms.section("pa.intake");
+        assertNotNull(intake);
+        assertEquals(Forms.AGREEMENT, intake.formId);
+        assertEquals("Citizens Property Insurance", in.str("info.insurer"));
+        assertEquals(String.valueOf(java.util.Calendar.getInstance().get(java.util.Calendar.YEAR) - 1998), in.str("pa.age")); // from year built
         List<Inspection> roster = Company.inspectors(main);
         assertEquals(1, roster.size());
         assertTrue(in.isPrefilled("fp.elec.mainAmps"));

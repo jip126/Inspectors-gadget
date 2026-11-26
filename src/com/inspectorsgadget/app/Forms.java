@@ -323,6 +323,23 @@ public final class Forms {
         s.multi("pa.release", "Client allows the report to be released to", RELEASE);
         s.text("pa.releaseOther", "Other (name)");
 
+        // Intake: same fields as Property & Client Details; not printed on the client's agreement
+        s = f.section("pa.intake", "Intake", "Contact, insurance and property details");
+        s.noPhotos();
+        s.header("Client");
+        s.text("info.contact", "Contact person");
+        s.text("info.workPhone", "Work phone");
+        s.text("info.cellPhone", "Cell phone");
+        s.header("Insurance");
+        s.text("info.insurer", "Insurance company");
+        s.text("info.policy", "Application / policy #");
+        s.header("Property");
+        s.text("info.county", "County");
+        s.num("info.yearBuilt", "Actual year built");
+        s.num("info.stories", "Number of stories");
+        s.num("info.sqft", "Approx. living area (sq ft)");
+        s.choice("info.occupancy", "Occupancy", "Occupied", "Vacant", "Furnished, unoccupied");
+
         s = f.section("pa.status", "Signatures & Status", "Sent, signed, and the signed copy");
         s.noPhotos();
         s.date("pa.sentDate", "Date sent to client");
