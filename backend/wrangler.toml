@@ -1,0 +1,27 @@
+# Cloudflare Workers config. See README.md for setup.
+name = "inspectors-gadget-relay"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+
+[vars]
+# "boldsign" or "docusign"
+ESIGN_PROVIDER = "boldsign"
+ANDROID_PACKAGE = "com.inspectorsgadget.app"
+SUBSCRIPTION_PRODUCT = "inspectors_gadget_pro"
+# Free e-signature requests per account before a subscription is needed (covers the trial inspection)
+TRIAL_ENVELOPES = "1"
+# Public URL of this worker, used for DocuSign per-envelope webhooks
+PUBLIC_URL = ""
+BOLDSIGN_API_BASE = "https://api.boldsign.com"
+DOCUSIGN_OAUTH_HOST = "account-d.docusign.com"
+DOCUSIGN_BASE_PATH = "https://demo.docusign.net/restapi"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "inspectors-gadget"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+# Secrets (set with `wrangler secret put NAME`, never committed):
+#   BOLDSIGN_API_KEY, BOLDSIGN_WEBHOOK_SECRET
+#   DOCUSIGN_INTEGRATION_KEY, DOCUSIGN_USER_ID, DOCUSIGN_ACCOUNT_ID, DOCUSIGN_PRIVATE_KEY, DOCUSIGN_CONNECT_HMAC_KEY
+#   GOOGLE_SERVICE_ACCOUNT_JSON, PLAY_PUSH_TOKEN

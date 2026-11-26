@@ -26,6 +26,7 @@ public final class SampleData {
 
     public static Inspection create(Context ctx) {
         Inspection in = Store.create(ctx);
+        Account.markSample(in);
         String today = new SimpleDateFormat("MM/dd/yyyy", Locale.US).format(new Date());
 
         v(in, "info.client", "Jordan & Casey Rivera");

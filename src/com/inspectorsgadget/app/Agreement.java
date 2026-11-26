@@ -40,6 +40,7 @@ public final class Agreement {
             case SIGNED:
                 return "Signed" + (in.str("pa.signedDate").length() > 0 ? " " + in.str("pa.signedDate") : "");
             case SENT:
+                if (in.str("pa.esign.id").length() > 0) return ESign.statusText(in);
                 return "Sent " + in.str("pa.sentDate") + ", waiting for signature";
             default:
                 return "Not sent yet";
@@ -118,11 +119,14 @@ public final class Agreement {
 
     // ---------------------------------------------------------------- PDF
 
-    public static File createPdf(Context c, Inspection in) throws Exception {
+    public static File createPdf(Context c, Inspection in) throws Exception { return createPdf(c, in, null); }
+
+    /** Same PDF; when {@code fields} is given, also returns where the client signs and initials. */
+    public static File createPdf(Context c, Inspection in, List<ESign.Field> fields) throws Exception {
         Company.applyDefault(c, in);
         Logic.prefillForm(in, Forms.AGREEMENT);
         ReportGenerator.Doc d = newDoc(c, in, false);
-        render(d, in, Company.profile(c));
+        render(d, in, Company.profile(c), fields);
         File dir = new File(c.getCacheDir(), "reports");
         dir.mkdirs();
         String addr = in.str("info.address").replaceAll("[^A-Za-z0-9]+", "_");
@@ -133,11 +137,13 @@ public final class Agreement {
         return out;
     }
 
-    public static List<Bitmap> preview(Context c, Inspection in) {
+    public static List<Bitmap> preview(Context c, Inspection in) { return preview(c, in, null); }
+
+    public static List<Bitmap> preview(Context c, Inspection in, List<ESign.Field> fields) {
         Company.applyDefault(c, in);
         Logic.prefillForm(in, Forms.AGREEMENT);
         ReportGenerator.Doc d = newDoc(c, in, true);
-        render(d, in, Company.profile(c));
+        render(d, in, Company.profile(c), fields);
         d.finishPage();
         return d.previews;
     }
@@ -148,7 +154,9 @@ public final class Agreement {
                 company + " · Inspection Agreement · " + in.title());
     }
 
-    static void render(ReportGenerator.Doc d, Inspection in, Inspection co) {
+    static void render(ReportGenerator.Doc d, Inspection in, Inspection co) { render(d, in, co, null); }
+
+    static void render(ReportGenerator.Doc d, Inspection in, Inspection co, List<ESign.Field> fields) {
         int W = ReportGenerator.W, M = ReportGenerator.M, full = W - 2 * M;
         String company = co.str("co.name").length() > 0 ? co.str("co.name") : "COMPANY";
         String coAddr = Forms.joinNonEmpty(co.str("co.address"), co.str("co.city"), co.str("co.state"));
@@ -228,7 +236,7 @@ public final class Agreement {
         WindFormRenderer.center(d, "SEE PAGE TWO FOR ADDITIONAL TERMS, CONDITIONS AND LIMITATIONS", 9.5f, Typeface.BOLD);
         WindFormRenderer.para(d, "IN WITNESS WHEREOF the parties have executed this Agreement on the day and year first "
                 + "written above.", 9, Typeface.NORMAL);
-        signatureBlock(d, in, company);
+        signatureBlock(d, in, company, fields);
 
         // page two: terms
         d.newPage();
@@ -240,6 +248,11 @@ public final class Agreement {
             d.y += 2;
         }
         d.y += 6;
+        if (fields != null) {
+            TextPaint ib = ReportGenerator.Doc.paint(9, Typeface.BOLD, WindFormRenderer.BLACK);
+            fields.add(new ESign.Field(ESign.Field.INITIALS, d.pageNo, M + ib.measureText("CLIENT initials: "),
+                    d.y - 2, 60, 16));
+        }
         WindFormRenderer.para(d, "CLIENT initials: " + WindFormRenderer.blank(in.str("pa.clientInitials")), 9, Typeface.BOLD);
     }
 
@@ -248,7 +261,7 @@ public final class Agreement {
         return n + suf;
     }
 
-    static void signatureBlock(ReportGenerator.Doc d, Inspection in, String company) {
+    static void signatureBlock(ReportGenerator.Doc d, Inspection in, String company, List<ESign.Field> fields) {
         int M = ReportGenerator.M, W = ReportGenerator.W;
         d.ensure(150);
         float colW = (W - 2 * M) / 2f;
@@ -259,6 +272,10 @@ public final class Agreement {
         d.c.drawText("CLIENT:", M + colW + 10, y0 + 10, bold);
         drawSig(d, in, "pa.inspectorSig", M + 20, y0 + 16);
         drawSig(d, in, "pa.clientSig", M + colW + 10, y0 + 16);
+        if (fields != null) {
+            fields.add(new ESign.Field(ESign.Field.SIGNATURE, d.pageNo, M + colW + 10, y0 + 16, 180, 38));
+            fields.add(new ESign.Field(ESign.Field.DATE, d.pageNo, W - M - 76, y0 + 62, 76, 14));
+        }
         Paint line = new Paint();
         line.setColor(WindFormRenderer.BLACK);
         d.c.drawText("By:", M, y0 + 56, norm);
@@ -278,6 +295,8 @@ public final class Agreement {
         float width = W - M - x;
         d.c.save();
         d.c.translate(x, d.y);
+        if (fields != null) fields.add(new ESign.Field(ESign.Field.INITIALS, d.pageNo,
+                x + norm.measureText("CLIENT’s initials "), d.y - 2, 40, 14));
         android.text.StaticLayout l = ReportGenerator.Doc.layout("CLIENT’s initials " + WindFormRenderer.blank(ini)
                 + " indicate agreement to allow COMPANY to release a copy of the report to:", norm, (int) width);
         l.draw(d.c);

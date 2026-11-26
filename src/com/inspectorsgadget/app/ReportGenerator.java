@@ -44,6 +44,10 @@ public final class ReportGenerator {
 
     /** Asks which size to export, remembering the last choice. */
     public static void createAndOpen(final Activity a, final Inspection in, final String formId) {
+        if (!Account.canExport(a, in)) {
+            PaywallActivity.open(a, PaywallActivity.REASON_LOCKED);
+            return;
+        }
         final android.content.SharedPreferences prefs = a.getSharedPreferences("export", 0);
         int last = prefs.getInt("size", SIZE_EMAIL);
         String[] items = {SIZE_LABELS[0] + "\n" + SIZE_HINTS[0], SIZE_LABELS[1] + "\n" + SIZE_HINTS[1]};
