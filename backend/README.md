@@ -63,7 +63,7 @@ Adapters live in `src/esign/`. Each implements `send`, `status`, `download` and 
 ### 3. Google Play subscriptions
 
 1. Google Play Console: create the app with package `com.inspectorsgadget.app`. A Play developer account costs a one-time $25.
-2. Monetize, Subscriptions: create product `inspectors_gadget_pro` with two base plans, `monthly` (auto-renewing, 1 month) and `annual` (auto-renewing, 1 year). Set prices there; the app's `Config.PRICE_*` are placeholders until Play prices load.
+2. Monetize, Subscriptions: create product `inspectors_gadget_pro` with two base plans, `monthly` (auto-renewing, 1 month) and `annual` (auto-renewing, 1 year). Prices: monthly $39.99, annual $400 (matches `Config.PRICE_*` in the app, which is shown until Play prices load).
 3. Google Cloud: create a service account, download its JSON key, and in Play Console, Users and permissions, invite its email with "View financial data" and "Manage orders and subscriptions". `wrangler secret put GOOGLE_SERVICE_ACCOUNT_JSON` (paste the whole JSON).
 4. Real-time developer notifications: create a Pub/Sub topic, grant `google-play-developer-notifications@system.gserviceaccount.com` publisher on it, set it in Play Console, Monetize, Monetization setup. Add a push subscription to `https://<relay>/v1/webhooks/play?token=<random>` and `wrangler secret put PLAY_PUSH_TOKEN` with the same random value.
 
