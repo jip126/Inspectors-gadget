@@ -1,0 +1,189 @@
+package com.inspectorsgadget.app;
+
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.graphics.Color;
+import android.os.Bundle;
+import android.text.InputType;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
+
+/** Home screen: list of inspections. */
+public class MainActivity extends Activity {
+
+    @Override
+    protected void onCreate(Bundle b) {
+        super.onCreate(b);
+        if (getActionBar() != null) getActionBar().hide();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        build();
+    }
+
+    private void build() {
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        LinearLayout root = Ui.vbox(this);
+        scroll.addView(root);
+
+        LinearLayout hero = Ui.vbox(this);
+        hero.setBackgroundColor(Ui.LOGO_BG);
+        int p = Ui.dp(this, 20);
+        hero.setPadding(p, Ui.dp(this, 28), p, p);
+        android.widget.ImageView logo = new android.widget.ImageView(this);
+        logo.setImageResource(R.drawable.logo);
+        logo.setAdjustViewBounds(true);
+        logo.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
+        logo.setContentDescription("The Inspector's Gadget");
+        hero.addView(logo, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));
+        TextView tag = Ui.text(this, "General home inspection \u00B7 4-Point \u00B7 Wind Mitigation", 14, Ui.SILVER, false);
+        tag.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
+        hero.addView(tag, Ui.matchWrap(this, 2));
+
+        LinearLayout actions = Ui.hbox(this);
+        actions.setPadding(0, Ui.dp(this, 16), 0, 0);
+        Button create = Ui.button(this, "+  New inspection", Ui.ACCENT, true);
+        create.setTextColor(Ui.LOGO_BG);
+        create.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) { newInspection(); }
+        });
+        actions.addView(create, Ui.weight(this, 1.2f, 0));
+        View gap = new View(this);
+        actions.addView(gap, new LinearLayout.LayoutParams(Ui.dp(this, 10), 1));
+        Button demo = Ui.button(this, "Load demo", Ui.SILVER, false);
+        demo.setBackground(Ui.rounded(this, 0x00000000, Ui.SILVER, 10));
+        demo.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Inspection in = SampleData.create(MainActivity.this);
+                Toast.makeText(MainActivity.this, "Demo inspection created", Toast.LENGTH_SHORT).show();
+                open(in);
+            }
+        });
+        actions.addView(demo, Ui.weight(this, 1f, 0));
+        hero.addView(actions);
+        Inspection co = Company.profile(this);
+        int n = Company.inspectors(this).size();
+        Button company = Ui.button(this, "🏢  " + (co.str("co.name").length() > 0 ? co.str("co.name") : "Company")
+                + " · " + n + " inspector" + (n == 1 ? "" : "s"), Ui.SILVER, false);
+        company.setBackground(Ui.rounded(this, 0x00000000, 0x55C0C7D0, 10));
+        company.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) { startActivity(new Intent(MainActivity.this, CompanyActivity.class)); }
+        });
+        hero.addView(company, Ui.matchWrap(this, 10));
+        root.addView(hero);
+
+        LinearLayout list = Ui.vbox(this);
+        int lp = Ui.dp(this, 14);
+        list.setPadding(lp, lp, lp, lp);
+        root.addView(list);
+
+        List<Inspection> all = Store.all(this);
+        list.addView(Ui.text(this, all.isEmpty() ? "No inspections yet" : "Inspections", 15, Ui.MUTED, true));
+        if (all.isEmpty()) {
+            TextView hint = Ui.body(this, "Start a new inspection, or load the demo to see a fully worked example "
+                    + "with marked-up photos and prefilled 4-Point and Wind Mitigation reports.");
+            list.addView(hint, Ui.matchWrap(this, 8));
+        }
+        SimpleDateFormat fmt = new SimpleDateFormat("MMM d, h:mm a", Locale.US);
+        for (final Inspection in : all) {
+            LinearLayout card = Ui.card(this);
+            ((LinearLayout.LayoutParams) card.getLayoutParams()).topMargin = Ui.dp(this, 10);
+            card.addView(Ui.text(this, in.title(), 17, Ui.TEXT, true));
+            String sub = Forms.joinNonEmpty(in.str("info.client"), in.str("info.city"));
+            if (sub.length() > 0) card.addView(Ui.muted(this, sub));
+            LinearLayout row = Ui.hbox(this);
+            row.setPadding(0, Ui.dp(this, 8), 0, 0);
+            for (Forms.Form f : new Forms.Form[]{Forms.form(Forms.GENERAL), Forms.form(Forms.FOUR_POINT),
+                    Forms.form(Forms.WIND)}) {
+                int[] pr = Logic.progress(in, f.id);
+                int pct = pr[1] == 0 ? 0 : Math.round(100f * pr[0] / pr[1]);
+                row.addView(Ui.pill(this, f.shortTitle + " " + pct + "%", f.color, Ui.PRIMARY_LIGHT));
+                row.addView(new View(this), new LinearLayout.LayoutParams(Ui.dp(this, 6), 1));
+            }
+            card.addView(row);
+            card.addView(Ui.muted(this, "Updated " + fmt.format(new Date(in.updated()))), Ui.matchWrap(this, 6));
+            card.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) { open(in); }
+            });
+            card.setOnLongClickListener(new View.OnLongClickListener() {
+                @Override
+                public boolean onLongClick(View v) {
+                    confirmDelete(in);
+                    return true;
+                }
+            });
+            list.addView(card);
+        }
+        if (!all.isEmpty()) list.addView(Ui.muted(this, "Long-press an inspection to delete it."), Ui.matchWrap(this, 4));
+        setContentView(scroll);
+    }
+
+    private void open(Inspection in) {
+        Intent i = new Intent(this, InspectionActivity.class);
+        i.putExtra(InspectionActivity.EXTRA_INSPECTION, in.id);
+        startActivity(i);
+    }
+
+    private void newInspection() {
+        LinearLayout box = Ui.vbox(this);
+        int p = Ui.dp(this, 20);
+        box.setPadding(p, Ui.dp(this, 8), p, 0);
+        final EditText addr = new EditText(this);
+        addr.setHint("Property address");
+        addr.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_POSTAL_ADDRESS
+                | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
+        box.addView(addr);
+        final EditText client = new EditText(this);
+        client.setHint("Client name");
+        client.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PERSON_NAME
+                | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
+        box.addView(client);
+        new AlertDialog.Builder(this).setTitle("New inspection").setView(box)
+                .setPositiveButton("Start", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int w) {
+                        Inspection in = Store.create(MainActivity.this);
+                        in.setUser("info.address", addr.getText().toString().trim());
+                        in.setUser("info.client", client.getText().toString().trim());
+                        in.setUser("info.date", new SimpleDateFormat("MM/dd/yyyy", Locale.US).format(new Date()));
+                        in.setUser("pa.services", new org.json.JSONArray().put(Forms.SERVICES[0]));
+                        Company.applyDefault(MainActivity.this, in);
+                        Store.save(in);
+                        open(in);
+                    }
+                }).setNegativeButton("Cancel", null).show();
+    }
+
+    private void confirmDelete(final Inspection in) {
+        new AlertDialog.Builder(this).setTitle("Delete inspection?")
+                .setMessage(in.title() + " and all of its photos will be removed from this device.")
+                .setPositiveButton("Delete", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int w) {
+                        Store.delete(MainActivity.this, in.id);
+                        build();
+                    }
+                }).setNegativeButton("Cancel", null).show();
+    }
+}

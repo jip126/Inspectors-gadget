@@ -1,0 +1,10 @@
+build/
+sdk/
+*.keystore
+*.jks
+javac.*.args
+test/lib/
+test/androidall/
+test/out/
+test/tclasses/
+test/stubclasses/
