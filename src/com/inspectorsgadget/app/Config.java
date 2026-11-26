@@ -18,9 +18,9 @@ public final class Config {
     public static final String PLAN_MONTHLY = "monthly";
     public static final String PLAN_ANNUAL = "annual";
 
-    /** Shown until real prices come from Google Play. Placeholders, not final pricing. */
+    /** Pricing (set 11/26/2026). Shown until Google Play returns localized prices; keep Play Console in sync. */
     public static final String PRICE_MONTHLY = "$39.99";
-    public static final String PRICE_ANNUAL = "$399.99";
+    public static final String PRICE_ANNUAL = "$400";
     public static final String ANNUAL_SAVINGS = "Save 17%";
 
     /** Demo mode: seconds before a simulated client signs an e-signature request. */
