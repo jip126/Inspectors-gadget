@@ -60,7 +60,6 @@ public class FormActivity extends Activity {
 
         LinearLayout head = Ui.card(this);
         head.addView(Ui.title(this, form.title));
-        head.addView(Ui.muted(this, form.description));
         int[] p = Logic.progress(insp, form.id);
         int findings = Logic.findings(insp, form.id).size();
         LinearLayout stats = Ui.hbox(this);
@@ -87,12 +86,13 @@ public class FormActivity extends Activity {
         }
         if (!Forms.GENERAL.equals(form.id)) {
             int pre = Logic.prefilledCount(insp, form.id);
-            TextView info = Ui.text(this, "↺ " + pre + " answers are prefilled from the "
-                    + (Forms.AGREEMENT.equals(form.id) ? "property details and company profile" : "General Inspection")
-                    + " and stay in sync until you change them here.", 13, Ui.TEAL, false);
-            info.setBackground(Ui.rounded(this, Ui.TEAL_LIGHT, 0, 8));
-            info.setPadding(Ui.dp(this, 10), Ui.dp(this, 8), Ui.dp(this, 10), Ui.dp(this, 8));
-            head.addView(info, Ui.matchWrap(this, 10));
+            if (pre > 0) {
+                TextView info = Ui.pill(this, "↺ " + pre + " prefilled", Ui.TEAL, Ui.TEAL_LIGHT);
+                LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT);
+                ilp.topMargin = Ui.dp(this, 10);
+                head.addView(info, ilp);
+            }
         }
         content.addView(head);
 
@@ -103,11 +103,10 @@ public class FormActivity extends Activity {
             top.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
             top.addView(Ui.text(this, "›", 24, Ui.MUTED, false));
             card.addView(top);
-            card.addView(Ui.muted(this, s.subtitle));
 
             int[] sp = Logic.progress(insp, s);
             List<Logic.Finding> fs = Logic.findings(insp, s);
-            int photos = insp.sectionPhotos(s.key).size();
+            int photos = Logic.sectionPhotoIds(insp, s).size();
             LinearLayout row = Ui.hbox(this);
             row.setPadding(0, Ui.dp(this, 8), 0, 0);
             row.addView(Ui.pill(this, sp[0] + "/" + sp[1], sp[0] == sp[1] && sp[1] > 0 ? 0xFF1B7F3B : form.color,
@@ -201,13 +200,11 @@ public class FormActivity extends Activity {
             });
             content.addView(open, Ui.matchWrap(this, 8));
         }
-        content.addView(Ui.muted(this, "The client can also sign right here on the device under Signatures & Status."),
-                Ui.matchWrap(this, 8));
     }
 
     private void buildAgreement(final boolean sendIt) {
         if (sendIt && insp.str("info.email").length() == 0)
-            Toast.makeText(this, "Tip: add the client's email in Agreement details", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "No client email on file", Toast.LENGTH_LONG).show();
         final android.app.ProgressDialog pd = android.app.ProgressDialog.show(this, null, "Preparing agreement…", true, false);
         new Thread(new Runnable() {
             @Override

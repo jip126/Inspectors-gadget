@@ -59,8 +59,6 @@ public class CompanyActivity extends Activity {
         row.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         row.addView(Ui.text(this, "›", 26, Ui.MUTED, false));
         card.addView(row);
-        card.addView(Ui.text(this, "Business info, logo, fees and agreement terms", 13, Ui.TEAL, false),
-                Ui.matchWrap(this, 8));
         card.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) { open(Company.PROFILE_ID, "co"); }
@@ -68,8 +66,6 @@ public class CompanyActivity extends Activity {
         content.addView(card);
 
         content.addView(Ui.text(this, "Inspectors", 15, Ui.MUTED, true), Ui.matchWrap(this, 6));
-        content.addView(Ui.muted(this, "Pick who conducted each inspection. Their license details and saved signature "
-                + "go on the agreement and reports."), Ui.matchWrap(this, 2));
         List<Inspection> roster = Company.inspectors(this);
         for (final Inspection ip : roster) {
             LinearLayout c = Ui.card(this);
@@ -78,7 +74,7 @@ public class CompanyActivity extends Activity {
             String lic = Forms.joinNonEmpty(ip.str("ip.title"), ip.str("ip.license"), ip.str("ip.issuer"));
             if (lic.length() > 0) c.addView(Ui.muted(this, lic));
             if (ip.str("ip.signature").length() == 0)
-                c.addView(Ui.text(this, "No saved signature yet", 12, Ui.AMBER, false));
+                c.addView(Ui.text(this, "No saved signature", 12, Ui.AMBER, false));
             c.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) { open(ip.id, "ip"); }
@@ -110,7 +106,6 @@ public class CompanyActivity extends Activity {
             }
         });
         content.addView(add, Ui.matchWrap(this, 12));
-        if (roster.size() > 0) content.addView(Ui.muted(this, "Long-press an inspector to remove them."), Ui.matchWrap(this, 6));
         setContentView(scroll);
     }
 

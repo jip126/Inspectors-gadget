@@ -219,7 +219,7 @@ final class WindFormRenderer {
                 {"License Type", shortLicense(in.str("wm.cert.licenseType"))},
                 {"License or Certificate #", in.str("wm.cert.license")},
                 {"Inspection Company", in.str("wm.cert.company")}, {"Phone", in.str("wm.cert.phone")}});
-        para(d, "Qualified Inspector – I hold an active license as a: (check one)", 9, Typeface.BOLD);
+        para(d, "Qualified Inspector: I hold an active license as a: (check one)", 9, Typeface.BOLD);
         String lt = in.str("wm.cert.licenseType");
         String[] lic = {
                 "Home inspector licensed under Section 468.8314, Florida Statutes who has completed the statutory number of hours of hurricane mitigation training approved by the Construction Industry Licensing Board and completion of a proficiency exam.",

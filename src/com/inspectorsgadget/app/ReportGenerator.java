@@ -235,7 +235,7 @@ public final class ReportGenerator {
                         in.str("info.companyEmail"))},
         };
         d.box(0xFFF3F5F8);
-        for (String[] r : info) d.row(r[0], r[1].length() > 0 ? r[1] : "—", false);
+        for (String[] r : info) d.row(r[0], r[1], false);
         d.endBox();
 
         // Findings summary
@@ -243,17 +243,14 @@ public final class ReportGenerator {
         d.sectionBar(findings.isEmpty() ? "Summary: no deficiencies flagged" : "Summary of findings (" + findings.size() + ")",
                 findings.isEmpty() ? 0xFF1B7F3B : Ui.RED);
         for (Logic.Finding f : findings) {
-            d.bullet(f.section.title + " — " + f.field.label + ": " + f.value, Ui.RED);
+            String c = in.str(Forms.commentKey(f.field.key));
+            d.bullet(f.section.title + ", " + f.field.label + ": " + f.value + (c.length() > 0 ? ". " + c : ""), Ui.RED);
         }
         d.y += 6;
 
         boolean skipEmpty = Forms.GENERAL.equals(formId);
         for (Forms.Section s : form.sections) {
             d.sectionBar(s.title, form.color);
-            if (s.subtitle != null && !Forms.GENERAL.equals(formId)) {
-                d.text(s.subtitle, 9, Typeface.ITALIC, 0xFF5F6B7A, W - 2 * M, M);
-                d.y += 4;
-            }
             boolean any = false;
             for (Forms.Field f : s.fields) {
                 if (f.type == Forms.HEADER) {
@@ -268,7 +265,7 @@ public final class ReportGenerator {
                     if (v.length() == 0 && skipEmpty) continue;
                     d.ensure(40);
                     d.text(f.label, 10, Typeface.BOLD, 0xFF1B1F24, W - 2 * M, M);
-                    d.text(v.length() > 0 ? v : "—", 10, Typeface.NORMAL, 0xFF1B1F24, W - 2 * M, M);
+                    d.text(v, 10, Typeface.NORMAL, 0xFF1B1F24, W - 2 * M, M);
                     d.y += 6;
                     any = true;
                     continue;
@@ -279,11 +276,22 @@ public final class ReportGenerator {
                     continue;
                 }
                 String v = in.str(f.key);
-                if (v.length() == 0 && skipEmpty) continue;
-                d.row(f.label, v.length() > 0 ? v : "—", Logic.isFinding(in, f));
+                String comment = in.str(Forms.commentKey(f.key));
+                List<String> itemPhotos = new ArrayList<>();
+                if (f.takesPhotos()) for (String p : in.sectionPhotos(f.key)) if (in.photoExists(p)) itemPhotos.add(p);
+                if (v.length() == 0 && comment.length() == 0 && itemPhotos.isEmpty() && skipEmpty) continue;
+                d.row(f.label, v, Logic.isFinding(in, f));
+                if (comment.length() > 0) {
+                    d.text(comment, 9.5f, Typeface.ITALIC, 0xFF3A4350, (int) (W - 2 * M - 12), M + 12);
+                    d.y += 4;
+                }
+                if (!itemPhotos.isEmpty()) {
+                    d.y += 2;
+                    d.photos(in, itemPhotos);
+                }
                 any = true;
             }
-            if (!any) d.text("Not inspected / no entries.", 10, Typeface.ITALIC, 0xFF5F6B7A, W - 2 * M, M);
+            if (!any) d.text("Not inspected", 10, Typeface.ITALIC, 0xFF5F6B7A, W - 2 * M, M);
 
             List<String> photos = new ArrayList<>();
             for (String p : in.sectionPhotos(s.key)) if (in.photoExists(p)) photos.add(p);
@@ -314,7 +322,7 @@ public final class ReportGenerator {
         d.sectionBar("Inspected by", form.color);
         d.row("Inspector", Forms.joinNonEmpty(in.str("info.inspector"), in.str("info.inspectorTitle")), false);
         d.row("License", Forms.joinNonEmpty(in.str("info.licenseType"), in.str("info.license")), false);
-        d.row("Issuing body", in.str("info.issuer").length() > 0 ? in.str("info.issuer") : "—", false);
+        d.row("Issuing body", in.str("info.issuer"), false);
         if (in.str("info.licenseExp").length() > 0) d.row("License expires", in.str("info.licenseExp"), false);
         String contact = Forms.joinNonEmpty(in.str("info.inspectorPhone"), in.str("info.inspectorEmail"));
         if (contact.length() > 0) d.row("Contact", contact, false);

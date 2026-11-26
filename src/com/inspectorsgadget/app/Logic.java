@@ -153,20 +153,36 @@ public final class Logic {
         return n;
     }
 
+    /** Photo lists that belong to a section: the section's own list, then one per item (General only). */
+    public static List<String> photoBuckets(Forms.Section s) {
+        List<String> out = new ArrayList<>();
+        out.add(s.key);
+        for (Forms.Field f : s.fields) if (f.takesPhotos()) out.add(f.key);
+        return out;
+    }
+
+    /** Every existing photo in a section, item photos included, without duplicates. */
+    public static List<String> sectionPhotoIds(Inspection in, Forms.Section s) {
+        List<String> out = new ArrayList<>();
+        for (String b : photoBuckets(s))
+            for (String p : in.sectionPhotos(b)) if (!out.contains(p) && in.photoExists(p)) out.add(p);
+        return out;
+    }
+
     public static int photoCount(Inspection in, String formId) {
         List<String> seen = new ArrayList<>();
         for (Forms.Section s : Forms.form(formId).sections)
-            for (String p : in.sectionPhotos(s.key)) if (!seen.contains(p)) seen.add(p);
+            for (String p : sectionPhotoIds(in, s)) if (!seen.contains(p)) seen.add(p);
         return seen.size();
     }
 
-    /** Photos from the given general sections that are not yet attached to the target section. */
+    /** Photos from the given general sections (and their items) that are not yet attached to the target section. */
     public static List<String> importablePhotos(Inspection in, Forms.Section target) {
         List<String> out = new ArrayList<>();
         List<String> have = in.sectionPhotos(target.key);
         for (String src : target.photoSources) {
-            for (String p : in.sectionPhotos(src)) {
-                if (!have.contains(p) && !out.contains(p) && in.photoExists(p)) out.add(p);
+            for (String p : sectionPhotoIds(in, Forms.section(src))) {
+                if (!have.contains(p) && !out.contains(p)) out.add(p);
             }
         }
         return out;

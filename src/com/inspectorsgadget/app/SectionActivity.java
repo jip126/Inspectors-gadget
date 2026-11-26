@@ -58,7 +58,9 @@ public class SectionActivity extends Activity {
     private LinearLayout photoStrip;
     private TextView photoTitle;
     private LinearLayout importBanner;
-    private String pendingPhoto, pendingVoiceKey;
+    private String pendingPhoto, pendingVoiceKey, photoTarget;
+    private final Map<String, LinearLayout> itemStrips = new HashMap<>();
+    private final Map<String, View> commentBoxes = new HashMap<>();
     private final Map<String, EditText> notesViews = new HashMap<>();
     private final Map<String, TextView> prefillBadges = new HashMap<>();
     private final Map<String, TextView> findingBadges = new HashMap<>();
@@ -76,6 +78,7 @@ public class SectionActivity extends Activity {
         if (b != null) {
             pendingPhoto = b.getString("pendingPhoto");
             pendingVoiceKey = b.getString("pendingVoice");
+            photoTarget = b.getString("photoTarget");
         }
         form = Forms.form(section.formId);
         // "isGeneral" = forms that do not reuse general-inspection photos/answers
@@ -84,7 +87,7 @@ public class SectionActivity extends Activity {
                 && !insp.id.startsWith("_");
         setTitle(section.title);
         if (getActionBar() != null) {
-            getActionBar().setSubtitle(insp.id.startsWith("_") ? form.description : form.shortTitle + " \u00B7 " + insp.title());
+            getActionBar().setSubtitle(insp.id.startsWith("_") ? form.shortTitle : form.shortTitle + " \u00B7 " + insp.title());
             getActionBar().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(form.color));
         }
         if (prefillForm && Logic.prefill(insp, section) > 0) Store.save(insp);
@@ -96,6 +99,7 @@ public class SectionActivity extends Activity {
         super.onSaveInstanceState(out);
         out.putString("pendingPhoto", pendingPhoto);
         out.putString("pendingVoice", pendingVoiceKey);
+        out.putString("photoTarget", photoTarget);
     }
 
     @Override
@@ -117,19 +121,15 @@ public class SectionActivity extends Activity {
         LinearLayout head = Ui.card(this);
         TextView t = Ui.title(this, section.title);
         head.addView(t);
-        head.addView(Ui.muted(this, section.subtitle));
         int pre = 0;
         for (Forms.Field f : section.fields) if (f.inputs() && insp.isPrefilled(f.key)) pre++;
         if (pre > 0) {
-            TextView banner = Ui.text(this, "↺ " + pre + " answer" + (pre == 1 ? " was" : "s were")
-                    + " filled in for you (from the General Inspection, property details or company profile). Change any answer to override it.", 13, Ui.TEAL, false);
-            banner.setBackground(Ui.rounded(this, Ui.TEAL_LIGHT, 0, 8));
-            banner.setPadding(Ui.dp(this, 10), Ui.dp(this, 8), Ui.dp(this, 10), Ui.dp(this, 8));
-            head.addView(banner, Ui.matchWrap(this, 10));
+            head.addView(Ui.pill(this, "↺ " + pre + " prefilled", Ui.TEAL, Ui.TEAL_LIGHT), wrapLp(8));
         }
         content.addView(head);
 
-        if (section.photos) content.addView(buildPhotoCard());
+        boolean itemPhotos = Forms.GENERAL.equals(form.id);
+        if (section.photos && !itemPhotos) content.addView(buildPhotoCard());
 
         LinearLayout card = Ui.card(this);
         content.addView(card);
@@ -167,6 +167,8 @@ public class SectionActivity extends Activity {
             });
             content.addView(nb, Ui.matchWrap(this, 4));
         }
+        if (section.photos && itemPhotos) content.addView(buildPhotoCard(), content.getChildCount() - (idx >= 0 && idx + 1 < form.sections.size() ? 1 : 0));
+        refreshPhotos();
         setContentView(scroll);
     }
 
@@ -214,7 +216,89 @@ public class SectionActivity extends Activity {
                 control = new View(this);
         }
         box.addView(control, Ui.matchWrap(this, 6));
+        if (f.takesPhotos()) itemExtras(box, f);
         return box;
+    }
+
+    private LinearLayout.LayoutParams wrapLp(int top) {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.topMargin = Ui.dp(this, top);
+        return lp;
+    }
+
+    /** Photos and a dictated comment attached to one inspection item. */
+    private void itemExtras(LinearLayout box, final Forms.Field f) {
+        final String ck = Forms.commentKey(f.key);
+        LinearLayout actions = Ui.hbox(this);
+        TextView cam = Ui.pill(this, "📷  Photo", form.color, Ui.PRIMARY_LIGHT);
+        cam.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) { takePhoto(f.key); }
+        });
+        actions.addView(cam);
+        TextView gal = Ui.pill(this, "🖼  Gallery", form.color, Ui.PRIMARY_LIGHT);
+        gal.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) { pickFromGallery(f.key); }
+        });
+        LinearLayout.LayoutParams glp = wrapLp(0);
+        glp.leftMargin = Ui.dp(this, 8);
+        actions.addView(gal, glp);
+        TextView mic = Ui.pill(this, "🎤  Comment", form.color, Ui.PRIMARY_LIGHT);
+        LinearLayout.LayoutParams mlp = wrapLp(0);
+        mlp.leftMargin = Ui.dp(this, 8);
+        actions.addView(mic, mlp);
+        box.addView(actions, wrapLp(8));
+
+        HorizontalScrollView hs = new HorizontalScrollView(this);
+        hs.setHorizontalScrollBarEnabled(false);
+        LinearLayout strip = Ui.hbox(this);
+        hs.addView(strip);
+        itemStrips.put(f.key, strip);
+        box.addView(hs, Ui.matchWrap(this, 8));
+
+        final LinearLayout cbox = Ui.hbox(this);
+        final EditText e = styledEdit();
+        e.setHint("Comments");
+        e.setMinLines(2);
+        e.setGravity(Gravity.TOP | Gravity.START);
+        e.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
+                | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        e.setText(insp.str(ck));
+        e.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence x, int a, int b, int c) {}
+
+            @Override
+            public void onTextChanged(CharSequence x, int a, int b, int c) {}
+
+            @Override
+            public void afterTextChanged(Editable x) {
+                insp.setUser(ck, x.toString().trim());
+                Store.saveSoon(insp);
+            }
+        });
+        notesViews.put(ck, e);
+        cbox.addView(e, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        Button dm = Ui.button(this, "🎤", form.color, false);
+        dm.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) { dictate(ck); }
+        });
+        LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(Ui.dp(this, 52), ViewGroup.LayoutParams.WRAP_CONTENT);
+        dlp.leftMargin = Ui.dp(this, 6);
+        cbox.addView(dm, dlp);
+        cbox.setVisibility(insp.str(ck).length() > 0 ? View.VISIBLE : View.GONE);
+        commentBoxes.put(ck, cbox);
+        box.addView(cbox, Ui.matchWrap(this, 8));
+        mic.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                cbox.setVisibility(View.VISIBLE);
+                dictate(ck);
+            }
+        });
     }
 
     private void changed(Forms.Field f, Object value) {
@@ -457,7 +541,7 @@ public class SectionActivity extends Activity {
 
     private View buildPhotoCard() {
         LinearLayout card = Ui.card(this);
-        photoTitle = Ui.text(this, section.photoLabel, 16, form.color, true);
+        photoTitle = Ui.text(this, photoLabel(), 16, form.color, true);
         card.addView(photoTitle);
 
         if (section.shotList != null) {
@@ -477,16 +561,16 @@ public class SectionActivity extends Activity {
         card.addView(hs, Ui.matchWrap(this, 10));
 
         LinearLayout actions = Ui.hbox(this);
-        Button cam = Ui.button(this, "📷  Take photo", form.color, true);
+        Button cam = Ui.button(this, "📷  Take photo", form.color, !Forms.GENERAL.equals(form.id));
         cam.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View v) { takePhoto(); }
+            public void onClick(View v) { takePhoto(section.key); }
         });
         actions.addView(cam, Ui.weight(this, 1.2f, 3));
         Button gal = Ui.button(this, "🖼  Gallery", form.color, false);
         gal.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View v) { pickFromGallery(); }
+            public void onClick(View v) { pickFromGallery(section.key); }
         });
         actions.addView(gal, Ui.weight(this, 1f, 3));
         card.addView(actions, Ui.matchWrap(this, 10));
@@ -499,17 +583,34 @@ public class SectionActivity extends Activity {
             });
             card.addView(reuse, Ui.matchWrap(this, 8));
         }
-        refreshPhotos();
         return card;
     }
 
+    private String photoLabel() {
+        return Forms.GENERAL.equals(form.id) ? "Other photos" : section.photoLabel;
+    }
+
     private void refreshPhotos() {
+        for (Map.Entry<String, LinearLayout> en : itemStrips.entrySet()) {
+            fillStrip(en.getValue(), en.getKey(), Ui.dp(this, 84));
+            ((View) en.getValue().getParent()).setVisibility(en.getValue().getChildCount() > 0 ? View.VISIBLE : View.GONE);
+        }
         if (photoStrip == null) return;
-        photoStrip.removeAllViews();
+        int n = fillStrip(photoStrip, section.key, Ui.dp(this, 112));
+        String lbl = photoLabel();
+        photoTitle.setText(lbl + (lbl.endsWith("hotos") ? " (" + n + ")" : ""));
+        if (n == 0) {
+            TextView empty = Ui.muted(this, "No photos");
+            photoStrip.addView(empty);
+        }
+        refreshImportBanner();
+    }
+
+    /** Fills a thumbnail strip with the photos in one list; returns how many. */
+    private int fillStrip(LinearLayout strip, final String bucket, int size) {
+        strip.removeAllViews();
         List<String> ids = new ArrayList<>();
-        for (String p : insp.sectionPhotos(section.key)) if (insp.photoExists(p)) ids.add(p);
-        photoTitle.setText(section.photoLabel + (section.photoLabel.equals("Photos") ? " (" + ids.size() + ")" : ""));
-        int size = Ui.dp(this, 112);
+        for (String p : insp.sectionPhotos(bucket)) if (insp.photoExists(p)) ids.add(p);
         for (final String pid : ids) {
             FrameLayout fl = new FrameLayout(this);
             ImageView iv = new ImageView(this);
@@ -537,19 +638,16 @@ public class SectionActivity extends Activity {
                     ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.END));
             fl.setOnClickListener(new View.OnClickListener() {
                 @Override
-                public void onClick(View v) { photoOptions(pid); }
+                public void onClick(View v) { photoOptions(bucket, pid); }
             });
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(size, size);
             lp.rightMargin = Ui.dp(this, 8);
-            photoStrip.addView(fl, lp);
+            strip.addView(fl, lp);
         }
-        if (ids.isEmpty()) {
-            TextView empty = Ui.muted(this, isGeneral ? "No photos yet. Take one, then draw on it to highlight the finding."
-                    : "No photos yet. Take new ones or reuse photos from the General Inspection.");
-            int w = getResources().getDisplayMetrics().widthPixels - Ui.dp(this, 64);
-            photoStrip.addView(empty, new LinearLayout.LayoutParams(w, ViewGroup.LayoutParams.WRAP_CONTENT));
-        }
+        return ids.size();
+    }
 
+    private void refreshImportBanner() {
         importBanner.removeAllViews();
         if (!isGeneral) {
             final List<String> importable = Logic.importablePhotos(insp, section);
@@ -559,7 +657,7 @@ public class SectionActivity extends Activity {
                 row.setPadding(Ui.dp(this, 10), Ui.dp(this, 6), Ui.dp(this, 6), Ui.dp(this, 6));
                 StringBuilder names = new StringBuilder();
                 for (String k : section.photoSources) {
-                    if (insp.sectionPhotos(k).isEmpty()) continue;
+                    if (Logic.sectionPhotoIds(insp, Forms.section(k)).isEmpty()) continue;
                     if (names.length() > 0) names.append(", ");
                     names.append(Forms.section(k).title);
                 }
@@ -581,10 +679,10 @@ public class SectionActivity extends Activity {
         }
     }
 
-    private void photoOptions(final String pid) {
+    private void photoOptions(final String bucket, final String pid) {
         final boolean shared = insp.usageCount(pid) > 1;
         String[] items = {"✏  Mark up / draw on photo", "💬  Edit caption",
-                "✖  Remove from this section"};
+                "✖  Remove"};
         new AlertDialog.Builder(this)
                 .setTitle(insp.caption(pid).length() > 0 ? insp.caption(pid) : "Photo")
                 .setItems(items, new DialogInterface.OnClickListener() {
@@ -593,12 +691,12 @@ public class SectionActivity extends Activity {
                         if (which == 0) annotate(pid);
                         else if (which == 1) editCaption(pid);
                         else {
-                            insp.removePhotoFromSection(section.key, pid);
+                            insp.removePhotoFromSection(bucket, pid);
                             if (insp.usageCount(pid) == 0) insp.deletePhotoEverywhere(pid);
                             Store.save(insp);
                             refreshPhotos();
                             if (shared) Toast.makeText(SectionActivity.this,
-                                    "Removed here. Other sections still use this photo.", Toast.LENGTH_SHORT).show();
+                                    "Removed here. Still used in another section.", Toast.LENGTH_SHORT).show();
                         }
                     }
                 }).show();
@@ -630,8 +728,9 @@ public class SectionActivity extends Activity {
         startActivityForResult(i, REQ_ANNOTATE);
     }
 
-    private void takePhoto() {
-        pendingPhoto = insp.newPhoto(section.key);
+    private void takePhoto(String bucket) {
+        photoTarget = bucket;
+        pendingPhoto = insp.newPhoto(bucket);
         File f = insp.originalFile(pendingPhoto);
         Uri uri = FileShareProvider.uriFor(this, f);
         Intent i = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
@@ -648,7 +747,8 @@ public class SectionActivity extends Activity {
         }
     }
 
-    private void pickFromGallery() {
+    private void pickFromGallery(String bucket) {
+        photoTarget = bucket;
         Intent i = new Intent(Intent.ACTION_GET_CONTENT);
         i.setType("image/*");
         i.addCategory(Intent.CATEGORY_OPENABLE);
@@ -661,7 +761,8 @@ public class SectionActivity extends Activity {
     }
 
     private void importUri(Uri uri) {
-        String pid = insp.newPhoto(section.key);
+        String bucket = target();
+        String pid = insp.newPhoto(bucket);
         try {
             InputStream is = getContentResolver().openInputStream(uri);
             OutputStream os = new FileOutputStream(insp.originalFile(pid));
@@ -670,11 +771,20 @@ public class SectionActivity extends Activity {
             while ((n = is.read(buf)) > 0) os.write(buf, 0, n);
             os.close();
             is.close();
-            insp.addPhotoToSection(section.key, pid);
+            insp.addPhotoToSection(bucket, pid);
+            defaultCaption(bucket, pid);
         } catch (Exception e) {
             insp.deletePhotoEverywhere(pid);
             Toast.makeText(this, "Could not import photo", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private String target() { return photoTarget != null ? photoTarget : section.key; }
+
+    /** Item photos are captioned with the item name until the inspector writes a caption. */
+    private void defaultCaption(String bucket, String pid) {
+        if (bucket.equals(section.key) || insp.caption(pid).length() > 0) return;
+        for (Forms.Field f : section.fields) if (f.key.equals(bucket)) insp.setCaption(pid, f.label);
     }
 
     private void showReusePicker() {
@@ -695,7 +805,7 @@ public class SectionActivity extends Activity {
         int size = Ui.dp(this, 92);
         for (Forms.Section gs : order) {
             List<String> ids = new ArrayList<>();
-            for (String pid : insp.sectionPhotos(gs.key)) if (insp.photoExists(pid) && !offered.contains(pid)) ids.add(pid);
+            for (String pid : Logic.sectionPhotoIds(insp, gs)) if (!offered.contains(pid)) ids.add(pid);
             if (ids.isEmpty()) continue;
             boolean suggested = Arrays.asList(section.photoSources).contains(gs.key);
             box.addView(Ui.text(this, gs.title + (suggested ? "  ★ suggested" : ""), 14, Ui.TEXT, true),
@@ -734,7 +844,7 @@ public class SectionActivity extends Activity {
             box.addView(grid, Ui.matchWrap(this, 6));
         }
         if (offered.isEmpty()) {
-            box.addView(Ui.body(this, "The General Inspection has no photos yet. Photos you take there can be reused here."));
+            box.addView(Ui.body(this, "No General Inspection photos."));
         }
         new AlertDialog.Builder(this).setTitle("Reuse photos from General")
                 .setView(sv)
@@ -757,7 +867,7 @@ public class SectionActivity extends Activity {
         pendingVoiceKey = key;
         Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-        i.putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak your " + section.title.toLowerCase(Locale.US) + " findings");
+        i.putExtra(RecognizerIntent.EXTRA_PROMPT, section.title);
         try {
             startActivityForResult(i, REQ_VOICE);
         } catch (ActivityNotFoundException e) {
@@ -773,7 +883,8 @@ public class SectionActivity extends Activity {
                 if (pendingPhoto != null) {
                     File f = insp.originalFile(pendingPhoto);
                     if (res == RESULT_OK && f.exists() && f.length() > 0) {
-                        insp.addPhotoToSection(section.key, pendingPhoto);
+                        insp.addPhotoToSection(target(), pendingPhoto);
+                        defaultCaption(target(), pendingPhoto);
                         Store.save(insp);
                         String pid = pendingPhoto;
                         pendingPhoto = null;

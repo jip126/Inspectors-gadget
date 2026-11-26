@@ -131,6 +131,7 @@ public class AppTest {
         List<String> importable = Logic.importablePhotos(in, Forms.section("fp.elec"));
         assertEquals(2, importable.size());
         assertEquals(9, Logic.photoCount(in, Forms.GENERAL));
+        assertEquals(1, in.sectionPhotos("wm.open").size());
         System.out.println("General findings: " + Logic.findings(in, Forms.GENERAL).size());
 
         // ---- a second employee: their details replace the first one's everywhere they were prefilled
@@ -184,6 +185,41 @@ public class AppTest {
         assertEquals(Agreement.SIGNED, Agreement.status(fresh));
         Store.delete(main, fresh.id);
 
+        // ---- photos and comments on individual General items
+        assertEquals(1, in.sectionPhotos("g.ext.siding").size());
+        assertEquals(0, in.sectionPhotos("g.ext").size());
+        Activity ext = start(SectionActivity.class, new Intent().putExtra(SectionActivity.EXTRA_INSPECTION, id)
+                .putExtra(SectionActivity.EXTRA_SECTION, "g.ext"));
+        View photoPill = findText(ext.getWindow().getDecorView(), "📷  Photo"); // first item = Wall cladding
+        assertNotNull("item photo button", photoPill);
+        photoPill.performClick();
+        org.robolectric.shadows.ShadowActivity.IntentForResult camReq = Shadows.shadowOf(ext).getNextStartedActivityForResult();
+        assertEquals(android.provider.MediaStore.ACTION_IMAGE_CAPTURE, camReq.intent.getAction());
+        String newPid = null;
+        for (java.util.Iterator<String> it = in.photoMeta().keys(); it.hasNext(); ) {
+            String p = it.next();
+            if (!in.photoExists(p)) newPid = p;
+        }
+        assertNotNull(newPid);
+        Images.writeJpeg(Bitmap.createBitmap(64, 48, Bitmap.Config.ARGB_8888), in.originalFile(newPid), 80);
+        Shadows.shadowOf(ext).receiveResult(camReq.intent, Activity.RESULT_OK, null);
+        assertEquals(2, in.sectionPhotos("g.ext.siding").size());
+        assertEquals("Wall cladding", in.caption(newPid));
+        View micPill = findText(ext.getWindow().getDecorView(), "🎤  Comment");
+        micPill.performClick();
+        org.robolectric.shadows.ShadowActivity.IntentForResult voiceReq = Shadows.shadowOf(ext).getNextStartedActivityForResult();
+        while (voiceReq != null && !android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH.equals(voiceReq.intent.getAction()))
+            voiceReq = Shadows.shadowOf(ext).getNextStartedActivityForResult();
+        assertNotNull("dictation started", voiceReq);
+        java.util.ArrayList<String> heard = new java.util.ArrayList<>();
+        heard.add("efflorescence at the base of the front wall");
+        Shadows.shadowOf(ext).receiveResult(voiceReq.intent, Activity.RESULT_OK,
+                new Intent().putStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS, heard));
+        assertEquals("Efflorescence at the base of the front wall.", in.str(Forms.commentKey("g.ext.siding")));
+        assertEquals(10, Logic.photoCount(in, Forms.GENERAL));
+        in.deletePhotoEverywhere(newPid); // blank test image; keep the demo previews clean
+        assertEquals(9, Logic.photoCount(in, Forms.GENERAL));
+
         // ---- every screen renders
         start(InspectionActivity.class, new Intent().putExtra(InspectionActivity.EXTRA_INSPECTION, id));
         for (Forms.Form f : Forms.all().values()) {
@@ -214,7 +250,7 @@ public class AppTest {
         assertTrue(in.list("wm.cover.types").contains("Metal"));
 
         // ---- markup a photo
-        String pid = in.sectionPhotos("g.ext").get(0);
+        String pid = in.sectionPhotos("g.ext.siding").get(0);
         Activity ann = start(AnnotateActivity.class, new Intent().putExtra(AnnotateActivity.EXTRA_INSPECTION, id)
                 .putExtra(AnnotateActivity.EXTRA_PHOTO, pid));
         DrawingView dv = findDrawing(ann.getWindow().getDecorView());
@@ -274,7 +310,7 @@ public class AppTest {
         shot(start(CompanyActivity.class, new Intent()), new File(outDir, "screen_10_company.png"), true);
         shot(start(SectionActivity.class, new Intent().putExtra(SectionActivity.EXTRA_INSPECTION, roster.get(0).id)
                 .putExtra(SectionActivity.EXTRA_SECTION, "ip")), new File(outDir, "screen_11_inspector.png"), true);
-        String elecPhoto = in.sectionPhotos("g.elec").get(0);
+        String elecPhoto = in.sectionPhotos("g.elec.hazards").get(0);
         shot(start(AnnotateActivity.class, new Intent().putExtra(AnnotateActivity.EXTRA_INSPECTION, id)
                 .putExtra(AnnotateActivity.EXTRA_PHOTO, elecPhoto)), new File(outDir, "screen_7_markup.png"), false);
         Store.save(in);

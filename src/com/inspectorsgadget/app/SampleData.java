@@ -193,27 +193,31 @@ public final class SampleData {
 
         // Generated placeholder photos with markup
         try {
-            photo(in, "g.ext", 0, "Front elevation (east)", null);
-            photo(in, "g.roof", 1, "Lifted tabs and granule loss, south slope",
+            photo(in, "g.ext.siding", 0, "Front elevation (east)", null);
+            photo(in, "g.roof.damage", 1, "Lifted tabs and granule loss, south slope",
                     stroke(DrawingView.CIRCLE, 0xFFFFEA00, 0.010f, 0.52f, 0.30f, 0.74f, 0.52f));
-            photo(in, "g.elec", 2, "Double tap at breaker 14",
+            photo(in, "g.elec.hazards", 2, "Double tap at breaker 14",
                     stroke(DrawingView.ARROW, 0xFFFF1744, 0.010f, 0.18f, 0.80f, 0.43f, 0.55f),
                     stroke(DrawingView.CIRCLE, 0xFFFF1744, 0.009f, 0.42f, 0.44f, 0.60f, 0.62f));
-            photo(in, "g.elec", 3, "Panel label / data plate", null);
-            photo(in, "g.plumb", 4, "Water heater with TPR valve", null);
-            photo(in, "g.plumb", 5, "Stain in sink base cabinet",
+            photo(in, "g.elec.mainBrand", 3, "Panel label / data plate", null);
+            photo(in, "g.plumb.tpr", 4, "Water heater with TPR valve", null);
+            photo(in, "g.plumb.priorLeak", 5, "Stain in sink base cabinet",
                     stroke(DrawingView.BOX, 0xFF00E676, 0.009f, 0.30f, 0.55f, 0.72f, 0.85f));
-            photo(in, "g.hvac", 6, "Heat pump condenser", null);
-            photo(in, "g.attic", 7, "Hurricane clip at truss", stroke(DrawingView.ARROW, 0xFF00E5FF, 0.010f,
+            photo(in, "g.hvac.brand", 6, "Heat pump condenser", null);
+            photo(in, "g.attic.r2w", 7, "Hurricane clip at truss", stroke(DrawingView.ARROW, 0xFF00E5FF, 0.010f,
                     0.82f, 0.15f, 0.56f, 0.45f));
-            photo(in, "g.openings", 8, "Impact glass label", null);
+            photo(in, "g.openings.docs", 8, "Impact glass label", null);
         } catch (Exception e) {
             android.util.Log.e("InspectorsGadget", "sample photos", e);
         }
         // Wind mitigation needs a photo for each attribute in questions 3-7
         String[][] wmPhotos = {{"g.attic", "wm.deck"}, {"g.attic", "wm.r2w"}, {"g.roof", "wm.geom"},
                 {"g.roof", "wm.cover"}, {"g.openings", "wm.open"}};
-        for (String[] w : wmPhotos) for (String pid : in.sectionPhotos(w[0])) in.addPhotoToSection(w[1], pid);
+        for (String[] w : wmPhotos)
+            for (String pid : Logic.sectionPhotoIds(in, Forms.section(w[0]))) in.addPhotoToSection(w[1], pid);
+        v(in, Forms.commentKey("g.ext.siding_cond"), "Hairline stucco cracks at the northeast corner and below the front window. Seal and paint.");
+        v(in, Forms.commentKey("g.roof.damage"), "Lifted tabs and granule loss on the south slope, about 12 shingles. Repair by a licensed roofer.");
+        v(in, Forms.commentKey("g.elec.hazards"), "Double tap at breaker 14. Have an electrician separate the conductors.");
         Logic.prefillForm(in, Forms.AGREEMENT);
         Logic.prefillForm(in, Forms.FOUR_POINT);
         Logic.prefillForm(in, Forms.WIND);

@@ -98,12 +98,7 @@ public class MainActivity extends Activity {
         root.addView(list);
 
         List<Inspection> all = Store.all(this);
-        list.addView(Ui.text(this, all.isEmpty() ? "No inspections yet" : "Inspections", 15, Ui.MUTED, true));
-        if (all.isEmpty()) {
-            TextView hint = Ui.body(this, "Start a new inspection, or load the demo to see a fully worked example "
-                    + "with marked-up photos and prefilled 4-Point and Wind Mitigation reports.");
-            list.addView(hint, Ui.matchWrap(this, 8));
-        }
+        list.addView(Ui.text(this, all.isEmpty() ? "No inspections" : "Inspections", 15, Ui.MUTED, true));
         SimpleDateFormat fmt = new SimpleDateFormat("MMM d, h:mm a", Locale.US);
         for (final Inspection in : all) {
             LinearLayout card = Ui.card(this);
@@ -135,7 +130,6 @@ public class MainActivity extends Activity {
             });
             list.addView(card);
         }
-        if (!all.isEmpty()) list.addView(Ui.muted(this, "Long-press an inspection to delete it."), Ui.matchWrap(this, 4));
         setContentView(scroll);
     }
 

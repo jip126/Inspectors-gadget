@@ -74,12 +74,11 @@ public class InspectionActivity extends Activity {
 
         content.addView(moduleCard(Forms.form(Forms.AGREEMENT), "1", null));
         content.addView(moduleCard(Forms.form(Forms.GENERAL), "2", null));
-        content.addView(moduleCard(Forms.form(Forms.FOUR_POINT), "3", "Reuses General photos and answers"));
-        content.addView(moduleCard(Forms.form(Forms.WIND), "4", "Answers suggested from General findings"));
+        content.addView(moduleCard(Forms.form(Forms.FOUR_POINT), "3", ""));
+        content.addView(moduleCard(Forms.form(Forms.WIND), "4", ""));
 
         LinearLayout reports = Ui.card(this);
         reports.addView(Ui.text(this, "Reports", 16, Ui.TEXT, true));
-        reports.addView(Ui.muted(this, "Creates a PDF with answers, findings and marked-up photos, ready to share."));
         for (final Forms.Form f : new Forms.Form[]{Forms.form(Forms.AGREEMENT), Forms.form(Forms.GENERAL), Forms.form(Forms.FOUR_POINT),
                 Forms.form(Forms.WIND)}) {
             Button rb = Ui.button(this, "📄  " + f.title, f.color, false);
@@ -106,7 +105,6 @@ public class InspectionActivity extends Activity {
         LinearLayout titles = Ui.vbox(this);
         titles.setPadding(Ui.dp(this, 12), 0, 0, 0);
         titles.addView(Ui.text(this, f.title, 17, Ui.TEXT, true));
-        titles.addView(Ui.muted(this, f.description));
         top.addView(titles, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         top.addView(Ui.text(this, "›", 26, Ui.MUTED, false));
         card.addView(top);
@@ -118,7 +116,7 @@ public class InspectionActivity extends Activity {
                     st == Agreement.SIGNED ? 0xFFE3F4E8 : st == Agreement.SENT ? 0xFFFFF4DC : Ui.RED_LIGHT),
                     wrap(10));
             java.util.List<String> att = insp.list("pa.attend");
-            if (!att.isEmpty()) card.addView(Ui.muted(this, "At the inspection: " + android.text.TextUtils.join(", ", att)),
+            if (!att.isEmpty()) card.addView(Ui.muted(this, "Attending: " + android.text.TextUtils.join(", ", att)),
                     Ui.matchWrap(this, 6));
             card.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -139,8 +137,7 @@ public class InspectionActivity extends Activity {
         card.addView(row);
         if (note != null) {
             int pre = Logic.prefilledCount(insp, f.id);
-            card.addView(Ui.text(this, "↺ " + note + (pre > 0 ? " · " + pre + " prefilled" : ""), 13,
-                    Ui.TEAL, false), Ui.matchWrap(this, 8));
+            if (pre > 0) card.addView(Ui.text(this, "↺ " + pre + " prefilled", 13, Ui.TEAL, false), Ui.matchWrap(this, 8));
         }
         card.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -155,8 +152,7 @@ public class InspectionActivity extends Activity {
     /** The agreement should be signed before the inspection starts. */
     private void gate() {
         new android.app.AlertDialog.Builder(this).setTitle("Agreement not signed")
-                .setMessage("The pre-inspection agreement is " + Agreement.statusText(insp).toLowerCase(java.util.Locale.US)
-                        + ". It should be signed before the inspection starts.")
+                .setMessage("Agreement status: " + Agreement.statusText(insp) + ".")
                 .setPositiveButton("Open agreement", new android.content.DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(android.content.DialogInterface d, int w) { openForm(Forms.AGREEMENT); }

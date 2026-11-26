@@ -28,6 +28,9 @@ public final class Forms {
         Object map(Inspection in);
     }
 
+    /** Key of the inspector's comment on one item. */
+    public static String commentKey(String fieldKey) { return fieldKey + ".comment"; }
+
     public static class Field {
         public final String key, label;
         public final int type;
@@ -37,6 +40,8 @@ public final class Forms {
         public Mapper mapper;
         /** Value(s) that make this field a finding. "*" = any selection. */
         public String[] flags;
+        /** Form this field belongs to (set when it is added to a section). */
+        public String formId;
 
         Field(String key, String label, int type, String[] options) {
             this.key = key;
@@ -60,6 +65,11 @@ public final class Forms {
         public boolean prefillable() { return src != null || mapper != null; }
 
         public boolean inputs() { return type != HEADER; }
+
+        /** General-inspection items that can have their own photos (shown inline under the item). */
+        public boolean takesPhotos() {
+            return GENERAL.equals(formId) && (type == TEXT || type == NUMBER || type == DATE || type == CHOICE || type == MULTI);
+        }
     }
 
     public static class Section {
@@ -80,7 +90,11 @@ public final class Forms {
             this.subtitle = subtitle;
         }
 
-        Field add(Field f) { fields.add(f); return f; }
+        Field add(Field f) {
+            f.formId = formId;
+            fields.add(f);
+            return f;
+        }
         Field text(String k, String l) { return add(new Field(k, l, TEXT, null)); }
         Field num(String k, String l) { return add(new Field(k, l, NUMBER, null)); }
         Field date(String k, String l) { return add(new Field(k, l, DATE, null)); }
