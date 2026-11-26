@@ -241,6 +241,21 @@ public class AppTest {
         findText(fpRoof.getWindow().getDecorView(), "♻  Inspection photos").performClick();
         android.app.AlertDialog picker = (android.app.AlertDialog) org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog();
         assertTrue(picker.isShowing());
+        View pickerView = picker.getWindow().getDecorView();
+        assertNotNull("photo labeled with its item", findText(pickerView, "Roof › Signs of damage"));
+        assertNotNull(findText(pickerView, "Attic & Roof Structure › Roof-to-wall attachment"));
+        // render the picker's photo list for the screenshots folder
+        View list = findText(pickerView, "Roof › Signs of damage");
+        while (!(list.getParent() instanceof android.widget.ScrollView)) list = (View) list.getParent();
+        int pw = main.getResources().getDisplayMetrics().widthPixels;
+        ShadowLooper.idleMainLooper();
+        list.measure(View.MeasureSpec.makeMeasureSpec(pw, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(8000, View.MeasureSpec.AT_MOST));
+        list.layout(0, 0, list.getMeasuredWidth(), list.getMeasuredHeight());
+        Bitmap pb = Bitmap.createBitmap(pw, Math.min(list.getMeasuredHeight(), 8000), Bitmap.Config.ARGB_8888);
+        pb.eraseColor(0xFFFFFFFF);
+        list.draw(new android.graphics.Canvas(pb));
+        png(pb, new File(System.getProperty("pdfOut", "/tmp"), "screen_12_inspection_photo_picker.png"));
         picker.dismiss();
 
         // Import all in 4-Point electrical

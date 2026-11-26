@@ -786,6 +786,11 @@ public class SectionActivity extends Activity {
         for (Forms.Field f : section.fields) if (f.key.equals(bucket)) insp.setCaption(pid, f.label);
     }
 
+    private static String itemLabel(Forms.Section s, String key) {
+        for (Forms.Field f : s.fields) if (f.key.equals(key)) return f.label;
+        return s.title;
+    }
+
     private void showReusePicker() {
         final List<String> current = insp.sectionPhotos(section.key);
         final Set<String> selected = new HashSet<>(current);
@@ -801,46 +806,65 @@ public class SectionActivity extends Activity {
         for (String k : section.photoSources) order.add(Forms.section(k));
         for (Forms.Section s : Forms.form(Forms.GENERAL).sections) if (!order.contains(s)) order.add(s);
 
-        int size = Ui.dp(this, 92);
+        int size = Ui.dp(this, 96);
         for (Forms.Section gs : order) {
-            List<String> ids = new ArrayList<>();
-            for (String pid : Logic.sectionPhotoIds(insp, gs)) if (!offered.contains(pid)) ids.add(pid);
-            if (ids.isEmpty()) continue;
             boolean suggested = Arrays.asList(section.photoSources).contains(gs.key);
-            box.addView(Ui.text(this, gs.title + (suggested ? "  ★ suggested" : ""), 14, Ui.TEXT, true),
-                    Ui.matchWrap(this, 10));
-            FlowLayout grid = new FlowLayout(this);
-            for (final String pid : ids) {
-                offered.add(pid);
-                final FrameLayout fl = new FrameLayout(this);
-                ImageView iv = new ImageView(this);
-                iv.setScaleType(ImageView.ScaleType.CENTER_CROP);
-                Images.loadThumb(iv, insp.displayFile(pid), 280);
-                fl.addView(iv, new FrameLayout.LayoutParams(size, size));
-                final TextView check = Ui.text(this, "✔", 18, Color.WHITE, true);
-                check.setGravity(Gravity.CENTER);
-                check.setBackground(Ui.rounded(this, 0xCC0E8C7F, 0, 14));
-                fl.addView(check, new FrameLayout.LayoutParams(Ui.dp(this, 28), Ui.dp(this, 28), Gravity.TOP | Gravity.END));
-                final Runnable paint = new Runnable() {
-                    @Override
-                    public void run() {
-                        boolean on = selected.contains(pid);
-                        check.setVisibility(on ? View.VISIBLE : View.GONE);
-                        fl.setAlpha(on ? 1f : 0.55f);
-                    }
-                };
-                paint.run();
-                fl.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        if (selected.contains(pid)) selected.remove(pid);
-                        else selected.add(pid);
-                        paint.run();
-                    }
-                });
-                grid.addView(fl, new ViewGroup.LayoutParams(size, size));
+            boolean headed = false;
+            // item photos in form order, then the section's other photos
+            List<String> buckets = Logic.photoBuckets(gs);
+            buckets.add(buckets.remove(0));
+            for (String bucket : buckets) {
+                List<String> ids = new ArrayList<>();
+                for (String pid : insp.sectionPhotos(bucket))
+                    if (insp.photoExists(pid) && !offered.contains(pid) && !ids.contains(pid)) ids.add(pid);
+                if (ids.isEmpty()) continue;
+                if (!headed) {
+                    TextView h = Ui.text(this, gs.title + (suggested ? "  ★" : ""), 15, form.color, true);
+                    box.addView(h, Ui.matchWrap(this, 14));
+                    headed = true;
+                }
+                String where = bucket.equals(gs.key) ? "Other photos" : itemLabel(gs, bucket);
+                box.addView(Ui.text(this, gs.title + " › " + where, 13, Ui.TEXT, true), Ui.matchWrap(this, 8));
+                FlowLayout grid = new FlowLayout(this);
+                for (final String pid : ids) {
+                    offered.add(pid);
+                    final LinearLayout tile = Ui.vbox(this);
+                    FrameLayout fl = new FrameLayout(this);
+                    ImageView iv = new ImageView(this);
+                    iv.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                    Images.loadThumb(iv, insp.displayFile(pid), 280);
+                    fl.addView(iv, new FrameLayout.LayoutParams(size, size));
+                    final TextView check = Ui.text(this, "✔", 18, Color.WHITE, true);
+                    check.setGravity(Gravity.CENTER);
+                    check.setBackground(Ui.rounded(this, 0xCC0E8C7F, 0, 14));
+                    fl.addView(check, new FrameLayout.LayoutParams(Ui.dp(this, 28), Ui.dp(this, 28), Gravity.TOP | Gravity.END));
+                    tile.addView(fl, new LinearLayout.LayoutParams(size, size));
+                    String cap = insp.caption(pid);
+                    TextView ct = Ui.text(this, cap.length() > 0 ? cap : where, 11, Ui.MUTED, false);
+                    ct.setMaxLines(2);
+                    ct.setEllipsize(android.text.TextUtils.TruncateAt.END);
+                    tile.addView(ct, new LinearLayout.LayoutParams(size, ViewGroup.LayoutParams.WRAP_CONTENT));
+                    final Runnable paint = new Runnable() {
+                        @Override
+                        public void run() {
+                            boolean on = selected.contains(pid);
+                            check.setVisibility(on ? View.VISIBLE : View.GONE);
+                            tile.setAlpha(on ? 1f : 0.6f);
+                        }
+                    };
+                    paint.run();
+                    tile.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            if (selected.contains(pid)) selected.remove(pid);
+                            else selected.add(pid);
+                            paint.run();
+                        }
+                    });
+                    grid.addView(tile, new ViewGroup.LayoutParams(size, ViewGroup.LayoutParams.WRAP_CONTENT));
+                }
+                box.addView(grid, Ui.matchWrap(this, 4));
             }
-            box.addView(grid, Ui.matchWrap(this, 6));
         }
         if (offered.isEmpty()) {
             box.addView(Ui.body(this, "No General Inspection photos."));
