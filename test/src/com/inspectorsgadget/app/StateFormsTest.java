@@ -30,6 +30,9 @@ import static org.junit.Assert.*;
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 public class StateFormsTest {
 
+    @org.junit.Before
+    public void signedIn() { Auth.setUnlockedForTest(true); }
+
     private static final File OUT = new File(System.getProperty("pdfOut", "/tmp"));
 
     private static List<String> ids(List<StateForms.OfficialForm> forms) {

@@ -31,6 +31,9 @@ import static org.junit.Assert.*;
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 public class AppTest {
 
+    @org.junit.Before
+    public void signedIn() { Auth.setUnlockedForTest(true); }
+
     private static List<String> texts(View v) {
         List<String> out = new ArrayList<>();
         collect(v, out);
