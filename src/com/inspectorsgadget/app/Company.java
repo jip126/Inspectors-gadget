@@ -102,6 +102,8 @@ public final class Company {
             ip.setUser("ip.licenseType", Forms.LICENSE_TYPES[0]);
             ip.setUser("ip.license", "HI-12683");
             ip.setUser("ip.issuer", "Florida DBPR");
+            ip.setUser(StateForms.LICENSE_STATE_KEY, "FL");
+            StateForms.setLicensesHeld(ip, java.util.Arrays.asList(StateForms.HOME_INSPECTOR));
             Forms.setLicensedTypes(ip, java.util.Arrays.asList(Forms.DEFAULT_TYPES));
             Store.save(ip);
         }
@@ -131,6 +133,8 @@ public final class Company {
         Inspection ip = Store.createWithId(c, id);
         ip.setUser("ip.issuer", "Florida DBPR");
         ip.setUser("ip.licenseType", Forms.LICENSE_TYPES[0]);
+        String st = StateForms.stateCode(profile(c).str("co.state"));
+        if (st.length() > 0) ip.setUser(StateForms.LICENSE_STATE_KEY, st);
         Store.save(ip);
         return ip;
     }
@@ -221,6 +225,7 @@ public final class Company {
         fill(in, "info.companyAddress", Forms.joinNonEmpty(p.str("co.address"),
                 Forms.joinNonEmpty(p.str("co.city"), (p.str("co.state") + " " + p.str("co.zip")).trim())));
         fill(in, "info.companyLicense", p.str("co.license"));
+        fill(in, StateForms.PROPERTY_STATE_KEY, StateForms.stateCode(p.str("co.state")));
     }
 
     private static void fill(Inspection in, String key, String value) {

@@ -15,6 +15,8 @@ import android.widget.TextView;
 public class InspectionActivity extends Activity {
     public static final String EXTRA_INSPECTION = "insp";
     private Inspection insp;
+    private String propState = "", licenseState = "";
+    private java.util.List<String> heldLicenses = new java.util.ArrayList<>();
 
     @Override
     protected void onCreate(Bundle b) {
@@ -69,6 +71,10 @@ public class InspectionActivity extends Activity {
     }
 
     private void build() {
+        Inspection co = Company.profile(this), ip = Company.inspectorFor(this, insp);
+        propState = StateForms.propertyState(insp, co);
+        licenseState = StateForms.licenseState(ip, co);
+        heldLicenses = StateForms.licensesHeld(ip);
         ScrollView scroll = new ScrollView(this);
         LinearLayout content = Ui.vbox(this);
         int pad = Ui.dp(this, 14);
@@ -116,6 +122,9 @@ public class InspectionActivity extends Activity {
             content.addView(add, Ui.matchWrap(this, 0));
             content.addView(Ui.spacer(this, 12));
         }
+
+        View forms = stateFormsCard(types);
+        if (forms != null) content.addView(forms);
 
         LinearLayout reports = Ui.card(this);
         reports.addView(Ui.text(this, "Reports", 16, Ui.TEXT, true));
@@ -177,6 +186,15 @@ public class InspectionActivity extends Activity {
         row.addView(Ui.pill(this, findings + " findings", findings > 0 ? Ui.RED : Ui.MUTED,
                 findings > 0 ? Ui.RED_LIGHT : 0xFFEDEFF2));
         card.addView(row);
+        java.util.List<StateForms.OfficialForm> official = StateForms.forState(propertyState(), f.id);
+        if (!official.isEmpty()) {
+            FlowLayout tags = new FlowLayout(this);
+            for (StateForms.OfficialForm of : official) {
+                boolean flag = !canIssue(of) && of.status == StateForms.Status.MANDATORY;
+                tags.addView(Ui.pill(this, of.label(), flag ? Ui.RED : Ui.PRIMARY, flag ? Ui.RED_LIGHT : 0xFFEDEFF2));
+            }
+            card.addView(tags, Ui.matchWrap(this, 8));
+        }
         if (note != null) {
             int pre = Logic.prefilledCount(insp, f.id);
             if (pre > 0) card.addView(Ui.text(this, "↺ " + pre + " prefilled", 13, Ui.TEAL, false), Ui.matchWrap(this, 8));
@@ -196,6 +214,68 @@ public class InspectionActivity extends Activity {
             }
         });
         return card;
+    }
+
+    private String propertyState() { return propState; }
+
+    private boolean canIssue(StateForms.OfficialForm of) {
+        return StateForms.canIssue(of, heldLicenses, licenseState, propState);
+    }
+
+    /** Official forms for the property state and this inspection's types, or null when none apply. */
+    private View stateFormsCard(java.util.List<String> types) {
+        String st = propertyState();
+        java.util.List<StateForms.OfficialForm> list = StateForms.forTypes(st, types);
+        if (list.isEmpty()) return null;
+        LinearLayout card = Ui.card(this);
+        card.addView(Ui.text(this, "State Forms" + (st.length() > 0 ? " \u00B7 " + StateForms.stateName(st) : ""),
+                16, Ui.TEXT, true));
+        for (final StateForms.OfficialForm of : list) {
+            LinearLayout row = Ui.vbox(this);
+            row.setPadding(0, Ui.dp(this, 10), 0, 0);
+            row.addView(Ui.text(this, of.label(), 15, Ui.TEXT, true));
+            row.addView(Ui.muted(this, of.name));
+            row.addView(Ui.muted(this, Forms.joinNonEmpty(Forms.typeTitle(of.type), of.issuer)));
+            LinearLayout tags = Ui.hbox(this);
+            tags.setPadding(0, Ui.dp(this, 4), 0, 0);
+            boolean req = of.status == StateForms.Status.MANDATORY;
+            tags.addView(Ui.pill(this, StateForms.statusLabel(of.status), req ? Ui.PRIMARY : Ui.MUTED,
+                    req ? Ui.PRIMARY_LIGHT : 0xFFEDEFF2));
+            if (of.inspectorForm() && !canIssue(of)) {
+                addGap(tags);
+                tags.addView(Ui.pill(this, "License not on file", req ? Ui.RED : Ui.MUTED, req ? Ui.RED_LIGHT : 0xFFEDEFF2));
+            }
+            row.addView(tags);
+            row.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) { showForm(of); }
+            });
+            card.addView(row);
+        }
+        return card;
+    }
+
+    private void showForm(final StateForms.OfficialForm of) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(of.number).append("\n").append(of.issuer).append("\n\n");
+        sb.append(of.statusText).append("\n").append(of.appliesWhen);
+        if (of.inspectorForm()) {
+            sb.append("\n\nLicenses: ");
+            for (int i = 0; i < of.licenses.size(); i++)
+                sb.append(i > 0 ? ", " : "").append(StateForms.licenseTitle(of.licenses.get(i)));
+        }
+        if (of.unaltered) sb.append("\n\nReproduce unaltered.");
+        new android.app.AlertDialog.Builder(this).setTitle(of.name).setMessage(sb.toString())
+                .setPositiveButton("Close", null)
+                .setNeutralButton("Official source", new android.content.DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(android.content.DialogInterface d, int w) {
+                        try {
+                            startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(of.source)));
+                        } catch (Exception ignored) {
+                        }
+                    }
+                }).show();
     }
 
     /** Licensed types of the conducting inspector that this inspection does not cover yet. */

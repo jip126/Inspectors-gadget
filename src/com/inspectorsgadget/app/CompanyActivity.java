@@ -73,6 +73,12 @@ public class CompanyActivity extends Activity {
             c.addView(Ui.text(this, "👤  " + Company.inspectorName(ip), 16, Ui.TEXT, true));
             String lic = Forms.joinNonEmpty(ip.str("ip.title"), ip.str("ip.license"), ip.str("ip.issuer"));
             if (lic.length() > 0) c.addView(Ui.muted(this, lic));
+            List<String> held = StateForms.licensesHeld(ip);
+            if (!held.isEmpty()) {
+                StringBuilder sb = new StringBuilder(StateForms.licenseState(ip, co));
+                for (String l : held) sb.append(sb.length() > 0 ? " \u00B7 " : "").append(StateForms.licenseTitle(l));
+                c.addView(Ui.muted(this, sb.toString()));
+            }
             if (ip.str("ip.signature").length() == 0)
                 c.addView(Ui.text(this, "No saved signature", 12, Ui.AMBER, false));
             c.setOnClickListener(new View.OnClickListener() {
