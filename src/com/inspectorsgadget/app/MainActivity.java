@@ -17,6 +17,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -53,7 +54,12 @@ public class MainActivity extends Activity {
         logo.setContentDescription("The Inspector's Gadget");
         hero.addView(logo, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT));
-        TextView tag = Ui.text(this, "General home inspection \u00B7 4-Point \u00B7 Wind Mitigation", 14, Ui.SILVER, false);
+        StringBuilder licensed = new StringBuilder();
+        for (String t : Company.licensedTypes(Company.inspectorFor(this, null))) {
+            if (licensed.length() > 0) licensed.append(" \u00B7 ");
+            licensed.append(Forms.form(t).shortTitle);
+        }
+        TextView tag = Ui.text(this, licensed.toString(), 14, Ui.SILVER, false);
         tag.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
         hero.addView(tag, Ui.matchWrap(this, 2));
 
@@ -117,14 +123,13 @@ public class MainActivity extends Activity {
             card.addView(Ui.text(this, in.title(), 17, Ui.TEXT, true));
             String sub = Forms.joinNonEmpty(in.str("info.client"), in.str("info.city"));
             if (sub.length() > 0) card.addView(Ui.muted(this, sub));
-            LinearLayout row = Ui.hbox(this);
+            FlowLayout row = new FlowLayout(this);
             row.setPadding(0, Ui.dp(this, 8), 0, 0);
-            for (Forms.Form f : new Forms.Form[]{Forms.form(Forms.GENERAL), Forms.form(Forms.FOUR_POINT),
-                    Forms.form(Forms.WIND)}) {
+            for (String t : Forms.types(in)) {
+                Forms.Form f = Forms.form(t);
                 int[] pr = Logic.progress(in, f.id);
                 int pct = pr[1] == 0 ? 0 : Math.round(100f * pr[0] / pr[1]);
                 row.addView(Ui.pill(this, f.shortTitle + " " + pct + "%", f.color, Ui.PRIMARY_LIGHT));
-                row.addView(new View(this), new LinearLayout.LayoutParams(Ui.dp(this, 6), 1));
             }
             card.addView(row);
             if (Account.isSample(in)) card.addView(Ui.pill(this, "Demo", Ui.MUTED, 0xFFEDEFF2), wrapTop(6));
@@ -157,9 +162,11 @@ public class MainActivity extends Activity {
     }
 
     private void newInspection() {
+        ScrollView sv = new ScrollView(this);
         LinearLayout box = Ui.vbox(this);
         int p = Ui.dp(this, 20);
         box.setPadding(p, Ui.dp(this, 8), p, 0);
+        sv.addView(box);
         final EditText addr = new EditText(this);
         addr.setHint("Property address");
         addr.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_POSTAL_ADDRESS
@@ -170,21 +177,85 @@ public class MainActivity extends Activity {
         client.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PERSON_NAME
                 | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
         box.addView(client);
-        new AlertDialog.Builder(this).setTitle("New inspection").setView(box)
-                .setPositiveButton("Start", new DialogInterface.OnClickListener() {
+
+        final List<Inspection> roster = Company.inspectors(this);
+        final String[] inspectorId = {roster.isEmpty() ? "" : roster.get(0).id};
+        final List<String> selected = new ArrayList<>();
+        final FlowLayout typeChips = new FlowLayout(this);
+        if (roster.size() > 1) {
+            box.addView(Ui.text(this, "Inspector", 14, Ui.TEXT, true), Ui.matchWrap(this, 14));
+            final FlowLayout people = new FlowLayout(this);
+            for (final Inspection ip : roster) {
+                final TextView chip = Ui.chip(this, Company.inspectorName(ip));
+                Ui.styleChip(this, chip, ip.id.equals(inspectorId[0]), Ui.PRIMARY);
+                chip.setOnClickListener(new View.OnClickListener() {
                     @Override
-                    public void onClick(DialogInterface d, int w) {
+                    public void onClick(View v) {
+                        inspectorId[0] = ip.id;
+                        for (int i = 0; i < people.getChildCount(); i++)
+                            Ui.styleChip(MainActivity.this, (TextView) people.getChildAt(i), people.getChildAt(i) == chip, Ui.PRIMARY);
+                        fillTypeChips(typeChips, ip, selected);
+                    }
+                });
+                people.addView(chip);
+            }
+            box.addView(people, Ui.matchWrap(this, 6));
+        }
+        box.addView(Ui.text(this, "Inspection types", 14, Ui.TEXT, true), Ui.matchWrap(this, 14));
+        box.addView(typeChips, Ui.matchWrap(this, 6));
+        fillTypeChips(typeChips, roster.isEmpty() ? null : roster.get(0), selected);
+
+        final AlertDialog dlg = new AlertDialog.Builder(this).setTitle("New inspection").setView(sv)
+                .setPositiveButton("Start", null).setNegativeButton("Cancel", null).create();
+        dlg.setOnShowListener(new DialogInterface.OnShowListener() {
+            @Override
+            public void onShow(DialogInterface d) {
+                dlg.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        if (selected.isEmpty()) {
+                            Toast.makeText(MainActivity.this, "Select an inspection type", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        dlg.dismiss();
                         Inspection in = Store.create(MainActivity.this);
                         in.setUser("info.address", addr.getText().toString().trim());
                         in.setUser("info.client", client.getText().toString().trim());
                         in.setUser("info.date", new SimpleDateFormat("MM/dd/yyyy", Locale.US).format(new Date()));
-                        in.setUser("pa.services", new org.json.JSONArray().put(Forms.SERVICES[0]));
+                        Forms.setTypes(in, selected);
+                        if (inspectorId[0].length() > 0) Company.applyInspector(MainActivity.this, in, inspectorId[0]);
                         Company.applyDefault(MainActivity.this, in);
+                        Logic.prefillForm(in, Forms.AGREEMENT);
                         Store.save(in);
                         Account.onInspectionCreated(MainActivity.this, in);
                         open(in);
                     }
-                }).setNegativeButton("Cancel", null).show();
+                });
+            }
+        });
+        dlg.show();
+    }
+
+    /** Chips for the inspector's licensed types; General is preselected when licensed. */
+    private void fillTypeChips(final FlowLayout box, Inspection inspector, final List<String> selected) {
+        box.removeAllViews();
+        final List<String> licensed = Company.licensedTypes(inspector);
+        selected.retainAll(licensed);
+        if (selected.isEmpty()) selected.add(licensed.contains(Forms.GENERAL) ? Forms.GENERAL : licensed.get(0));
+        for (final String t : licensed) {
+            final Forms.Form f = Forms.form(t);
+            final TextView chip = Ui.chip(this, f.title);
+            Ui.styleChip(this, chip, selected.contains(t), f.color);
+            chip.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (selected.contains(t)) selected.remove(t);
+                    else selected.add(t);
+                    Ui.styleChip(MainActivity.this, chip, selected.contains(t), f.color);
+                }
+            });
+            box.addView(chip);
+        }
     }
 
     private LinearLayout.LayoutParams wrapTop(int top) {

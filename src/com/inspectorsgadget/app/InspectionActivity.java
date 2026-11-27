@@ -38,8 +38,8 @@ public class InspectionActivity extends Activity {
         boolean changed = true; // inspector/company details may have changed
         changed |= Agreement.syncStatus(insp);
         Logic.prefillForm(insp, Forms.AGREEMENT);
-        changed |= Logic.prefillForm(insp, Forms.FOUR_POINT) > 0;
-        changed |= Logic.prefillForm(insp, Forms.WIND) > 0;
+        for (String t : Forms.types(insp))
+            if (!Forms.GENERAL.equals(t)) changed |= Logic.prefillForm(insp, t) > 0;
         if (changed) Store.save(insp);
         setTitle(insp.title());
         build();
@@ -103,14 +103,26 @@ public class InspectionActivity extends Activity {
         content.addView(head);
 
         content.addView(moduleCard(Forms.form(Forms.AGREEMENT), "1", null));
-        content.addView(moduleCard(Forms.form(Forms.GENERAL), "2", null));
-        content.addView(moduleCard(Forms.form(Forms.FOUR_POINT), "3", ""));
-        content.addView(moduleCard(Forms.form(Forms.WIND), "4", ""));
+        java.util.List<String> types = Forms.types(insp);
+        int n = 2;
+        for (String t : types) content.addView(moduleCard(Forms.form(t), String.valueOf(n++),
+                Forms.GENERAL.equals(t) ? null : ""));
+        if (!addableTypes().isEmpty()) {
+            Button add = Ui.button(this, "+  Add inspection type", Ui.PRIMARY, false);
+            add.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) { addType(); }
+            });
+            content.addView(add, Ui.matchWrap(this, 0));
+            content.addView(Ui.spacer(this, 12));
+        }
 
         LinearLayout reports = Ui.card(this);
         reports.addView(Ui.text(this, "Reports", 16, Ui.TEXT, true));
-        for (final Forms.Form f : new Forms.Form[]{Forms.form(Forms.AGREEMENT), Forms.form(Forms.GENERAL), Forms.form(Forms.FOUR_POINT),
-                Forms.form(Forms.WIND)}) {
+        java.util.List<Forms.Form> reportForms = new java.util.ArrayList<>();
+        reportForms.add(Forms.form(Forms.AGREEMENT));
+        for (String t : types) reportForms.add(Forms.form(t));
+        for (final Forms.Form f : reportForms) {
             Button rb = Ui.button(this, "📄  " + f.title, f.color, false);
             rb.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -172,15 +184,70 @@ public class InspectionActivity extends Activity {
         card.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (Forms.GENERAL.equals(f.id) && Agreement.status(insp) != Agreement.SIGNED) gate();
+                if (f.checklist && Agreement.status(insp) != Agreement.SIGNED) gate(f.id);
                 else openForm(f.id);
+            }
+        });
+        card.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                confirmRemoveType(f);
+                return true;
             }
         });
         return card;
     }
 
+    /** Licensed types of the conducting inspector that this inspection does not cover yet. */
+    private java.util.List<String> addableTypes() {
+        java.util.List<String> out = Company.licensedTypes(Company.inspectorFor(this, insp));
+        out.removeAll(Forms.types(insp));
+        return out;
+    }
+
+    private void addType() {
+        final java.util.List<String> ids = addableTypes();
+        final String[] names = new String[ids.size()];
+        final boolean[] checked = new boolean[ids.size()];
+        for (int i = 0; i < names.length; i++) names[i] = Forms.form(ids.get(i)).title;
+        new android.app.AlertDialog.Builder(this).setTitle("Add inspection type")
+                .setMultiChoiceItems(names, checked, new android.content.DialogInterface.OnMultiChoiceClickListener() {
+                    @Override
+                    public void onClick(android.content.DialogInterface d, int which, boolean on) { checked[which] = on; }
+                })
+                .setPositiveButton("Add", new android.content.DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(android.content.DialogInterface d, int w) {
+                        java.util.List<String> t = Forms.types(insp);
+                        for (int i = 0; i < checked.length; i++) if (checked[i]) t.add(ids.get(i));
+                        Forms.setTypes(insp, t);
+                        for (String id : t) if (!Forms.GENERAL.equals(id)) Logic.prefillForm(insp, id);
+                        Logic.prefillForm(insp, Forms.AGREEMENT);
+                        Store.save(insp);
+                        build();
+                    }
+                }).setNegativeButton("Cancel", null).show();
+    }
+
+    private void confirmRemoveType(final Forms.Form f) {
+        if (Forms.AGREEMENT.equals(f.id) || Forms.types(insp).size() <= 1) return;
+        new android.app.AlertDialog.Builder(this).setTitle("Remove " + f.title + "?")
+                .setMessage("Answers and photos are kept.")
+                .setPositiveButton("Remove", new android.content.DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(android.content.DialogInterface d, int w) {
+                        java.util.List<String> t = Forms.types(insp);
+                        t.remove(f.id);
+                        Forms.setTypes(insp, t);
+                        Logic.prefillForm(insp, Forms.AGREEMENT);
+                        Store.save(insp);
+                        build();
+                    }
+                }).setNegativeButton("Cancel", null).show();
+    }
+
     /** The agreement should be signed before the inspection starts. */
-    private void gate() {
+    private void gate(final String formId) {
         new android.app.AlertDialog.Builder(this).setTitle("Agreement not signed")
                 .setMessage("Agreement status: " + Agreement.statusText(insp) + ".")
                 .setPositiveButton("Open agreement", new android.content.DialogInterface.OnClickListener() {
@@ -189,7 +256,7 @@ public class InspectionActivity extends Activity {
                 })
                 .setNegativeButton("Continue anyway", new android.content.DialogInterface.OnClickListener() {
                     @Override
-                    public void onClick(android.content.DialogInterface d, int w) { openForm(Forms.GENERAL); }
+                    public void onClick(android.content.DialogInterface d, int w) { openForm(formId); }
                 }).show();
     }
 

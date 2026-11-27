@@ -252,12 +252,14 @@ public final class ReportGenerator {
         }
         d.y += 6;
 
-        boolean skipEmpty = Forms.GENERAL.equals(formId);
+        boolean skipEmpty = form.checklist;
         for (Forms.Section s : form.sections) {
             d.sectionBar(s.title, form.color);
             boolean any = false;
-            for (Forms.Field f : s.fields) {
+            for (int fi = 0; fi < s.fields.size(); fi++) {
+                Forms.Field f = s.fields.get(fi);
                 if (f.type == Forms.HEADER) {
+                    if (skipEmpty && !groupHasContent(in, s, fi)) continue;
                     d.ensure(30);
                     d.y += 4;
                     d.text(f.label, 11, Typeface.BOLD, form.color, W - 2 * M, M);
@@ -309,7 +311,12 @@ public final class ReportGenerator {
                     + "Answers must be verified by the licensed inspector before submission to an insurer.",
                     8, Typeface.ITALIC, 0xFF5F6B7A, W - 2 * M, M);
         }
-        if (Forms.GENERAL.equals(formId)) inspectedBy(d, in, form);
+        if (form.reportNote != null) {
+            d.ensure(60);
+            d.text(form.reportNote, 8, Typeface.ITALIC, 0xFF5F6B7A, W - 2 * M, M);
+            d.y += 6;
+        }
+        if (form.checklist) inspectedBy(d, in, form);
         if (Forms.FOUR_POINT.equals(formId)) {
             d.ensure(60);
             d.text("Underwriting will rely on the information in this form to determine insurability. It is not a "
@@ -318,6 +325,17 @@ public final class ReportGenerator {
                     8, Typeface.ITALIC, 0xFF5F6B7A, W - 2 * M, M);
         }
 
+    }
+
+    /** Whether any item under the header at index h (up to the next header) has an answer, comment or photo. */
+    static boolean groupHasContent(Inspection in, Forms.Section s, int h) {
+        for (int i = h + 1; i < s.fields.size(); i++) {
+            Forms.Field f = s.fields.get(i);
+            if (f.type == Forms.HEADER) break;
+            if (in.has(f.key) || in.has(Forms.commentKey(f.key))) return true;
+            if (f.takesPhotos()) for (String p : in.sectionPhotos(f.key)) if (in.photoExists(p)) return true;
+        }
+        return false;
     }
 
     /** Sign-off with the conducting inspector's license details and saved signature. */
