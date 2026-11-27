@@ -48,12 +48,12 @@ public final class SampleData {
         v(in, "info.cellPhone", "(813) 555-0187");
         // Inspector, license and company details come from the company profile and roster
         Company.applyDefault(ctx, in);
+        Forms.setTypes(in, java.util.Arrays.asList(Forms.GENERAL, Forms.FOUR_POINT, Forms.WIND, Forms.WDO, Forms.ROOF));
 
         // Pre-inspection agreement
         v(in, "pa.time", "9:00 AM");
         v(in, "pa.faces", "South");
         v(in, "pa.temp", "82°F");
-        a(in, "pa.services", Forms.SERVICES[0]);
         v(in, "pa.feeHome", "425.00");
         a(in, "pa.attend", Forms.ATTEND[0], Forms.ATTEND[1]);
         v(in, "pa.agentName", "Morgan Lee");
@@ -219,9 +219,59 @@ public final class SampleData {
         v(in, Forms.commentKey("g.ext.siding_cond"), "Hairline stucco cracks at the northeast corner and below the front window. Seal and paint.");
         v(in, Forms.commentKey("g.roof.damage"), "Lifted tabs and granule loss on the south slope, about 12 shingles. Repair by a licensed roofer.");
         v(in, Forms.commentKey("g.elec.hazards"), "Double tap at breaker 14. Have an electrician separate the conductors.");
+
+        // Pest / termite (WDO)
+        v(in, "wdo.structures", "Main residence and attached garage");
+        a(in, "wdo.construction", "Concrete block", "Slab on grade");
+        v(in, "wdo.requestedBy", "Morgan Lee, Sunshine Realty");
+        v(in, "wdo.bizLicense", "JB123456");
+        v(in, "wdo.idCard", "JE987654");
+        v(in, "wdo.result", "Visible evidence of WDO observed");
+        a(in, "wdo.evidence", "Frass / fecal pellets", "Exit holes");
+        v(in, "wdo.evidenceLoc", "Garage door jamb, right side, and window sill in rear bedroom");
+        v(in, Forms.commentKey("wdo.evidence"), "Drywood termite pellets below the garage door jamb. No live termites observed.");
+        v(in, "wdo.damage", "Visible damage observed");
+        v(in, "wdo.damageLoc", "Garage door jamb, lower 18 inches");
+        a(in, "wdo.conducive", "Soil or mulch above slab edge", "Vegetation contacting structure");
+        v(in, "wdo.access.attic", "Partially inaccessible");
+        v(in, "wdo.access.atticWhy", "Insulation over ceiling joists and low clearance at eaves");
+        v(in, "wdo.access.interior", "Partially inaccessible");
+        v(in, "wdo.access.interiorWhy", "Furniture, stored items and floor coverings");
+        v(in, "wdo.access.exterior", "Fully accessible");
+        v(in, "wdo.access.crawlspace", "N/A");
+        v(in, "wdo.access.garage", "Partially inaccessible");
+        v(in, "wdo.access.garageWhy", "Stored items along the east wall");
+        v(in, "wdo.prevTreat", "Yes");
+        v(in, "wdo.prevTreatDesc", "Drill holes in garage slab, bait stations at perimeter");
+        v(in, "wdo.noticeLoc", "Electrical panel door, garage");
+        v(in, "wdo.treatedNow", "No");
+        v(in, "wdo.summary.notes", "Evidence of drywood termites and damage at the garage door jamb. Recommend "
+                + "treatment by a licensed pest control company and repair of the damaged jamb. Pull mulch back "
+                + "below the slab edge and trim shrubs away from the walls.");
+
+        // Roof (covering details prefill from the general inspection)
+        v(in, "roof.pitch", "6");
+        v(in, "roof.layers", "1");
+        v(in, "roof.field", "Marginal");
+        v(in, "roof.ridge", "Satisfactory");
+        v(in, "roof.fasteners", "Satisfactory");
+        v(in, "roof.storm", "No");
+        v(in, "roof.dripEdge", "Satisfactory");
+        v(in, "roof.valleys", "Satisfactory");
+        v(in, "roof.wallFlash", "Satisfactory");
+        v(in, "roof.boots", "Marginal");
+        v(in, Forms.commentKey("roof.boots"), "Cracked rubber boot at the kitchen vent stack. Replace.");
+        v(in, "roof.vents", "Satisfactory");
+        v(in, "roof.downspouts", "Satisfactory");
+        v(in, "roof.soffit", "Satisfactory");
+        v(in, "roof.decking", "Satisfactory");
+        v(in, "roof.overall", "Marginal");
+        v(in, "roof.recommend", "Maintenance / repair");
+        v(in, "roof.summary.notes", "Roof is serviceable with about 8 years of remaining life. Secure the lifted "
+                + "tabs on the south slope and replace the cracked vent boot.");
+
         Logic.prefillForm(in, Forms.AGREEMENT);
-        Logic.prefillForm(in, Forms.FOUR_POINT);
-        Logic.prefillForm(in, Forms.WIND);
+        for (String t : Forms.types(in)) if (!Forms.GENERAL.equals(t)) Logic.prefillForm(in, t);
         Store.save(in);
         return in;
     }

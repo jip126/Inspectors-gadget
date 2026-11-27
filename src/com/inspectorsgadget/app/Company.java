@@ -102,9 +102,28 @@ public final class Company {
             ip.setUser("ip.licenseType", Forms.LICENSE_TYPES[0]);
             ip.setUser("ip.license", "HI-12683");
             ip.setUser("ip.issuer", "Florida DBPR");
+            Forms.setLicensedTypes(ip, java.util.Arrays.asList(Forms.DEFAULT_TYPES));
             Store.save(ip);
         }
         return p;
+    }
+
+    /** Inspection types the inspector is licensed for; the default three when none are selected. */
+    public static List<String> licensedTypes(Inspection ip) {
+        List<String> ids = ip == null ? new ArrayList<String>() : Forms.typeIds(ip.list("ip.types"));
+        if (ids.isEmpty()) ids = new ArrayList<>(java.util.Arrays.asList(Forms.DEFAULT_TYPES));
+        return ids;
+    }
+
+    /** The inspector conducting this inspection (or the first on the roster). */
+    public static Inspection inspectorFor(Context c, Inspection in) {
+        String id = in == null ? "" : in.str("info.inspectorId");
+        if (id.length() > 0) {
+            Inspection ip = Store.get(c, id);
+            if (ip != null) return ip;
+        }
+        List<Inspection> roster = inspectors(c);
+        return roster.isEmpty() ? null : roster.get(0);
     }
 
     public static Inspection addInspector(Context c) {

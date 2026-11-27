@@ -128,7 +128,7 @@ public class SectionActivity extends Activity {
         }
         content.addView(head);
 
-        boolean itemPhotos = Forms.GENERAL.equals(form.id);
+        boolean itemPhotos = form.checklist;
         if (section.photos && !itemPhotos) content.addView(buildPhotoCard());
 
         LinearLayout card = Ui.card(this);
@@ -553,7 +553,7 @@ public class SectionActivity extends Activity {
         card.addView(hs, Ui.matchWrap(this, 10));
 
         LinearLayout actions = Ui.hbox(this);
-        Button cam = Ui.button(this, "📷  Take photo", form.color, Forms.GENERAL.equals(form.id) || insp.id.startsWith("_"));
+        Button cam = Ui.button(this, "📷  Take photo", form.color, form.checklist || insp.id.startsWith("_"));
         cam.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) { takePhoto(section.key); }
@@ -581,7 +581,7 @@ public class SectionActivity extends Activity {
     }
 
     private String photoLabel() {
-        return Forms.GENERAL.equals(form.id) ? "Other photos" : section.photoLabel;
+        return form.checklist ? "Other photos" : section.photoLabel;
     }
 
     private void refreshPhotos() {

@@ -42,6 +42,8 @@ public final class Forms {
         public String[] flags;
         /** Form this field belongs to (set when it is added to a section). */
         public String formId;
+        /** Item belongs to a checklist inspection (own photos and a dictated comment). */
+        boolean checklistItem;
 
         Field(String key, String label, int type, String[] options) {
             this.key = key;
@@ -68,13 +70,14 @@ public final class Forms {
 
         /** General-inspection items that can have their own photos (shown inline under the item). */
         public boolean takesPhotos() {
-            return GENERAL.equals(formId) && (type == TEXT || type == NUMBER || type == DATE || type == CHOICE || type == MULTI);
+            return checklistItem && (type == TEXT || type == NUMBER || type == DATE || type == CHOICE || type == MULTI);
         }
     }
 
     public static class Section {
         public final String key, title, subtitle;
         public String formId;
+        public boolean checklist;
         public final List<Field> fields = new ArrayList<>();
         public boolean photos = true;
         /** General inspection sections whose photos are offered for import. */
@@ -92,6 +95,7 @@ public final class Forms {
 
         Field add(Field f) {
             f.formId = formId;
+            f.checklistItem = checklist;
             fields.add(f);
             return f;
         }
@@ -114,6 +118,10 @@ public final class Forms {
         public final String id, title, shortTitle, description;
         public final int color;
         public final List<Section> sections = new ArrayList<>();
+        /** Checklist inspections: live photos and a dictated comment on every item, empty items left off the report. */
+        public boolean checklist;
+        /** Scope and limitations line printed at the end of the report. */
+        public String reportNote;
 
         Form(String id, String title, String shortTitle, String description, int color) {
             this.id = id;
@@ -126,6 +134,7 @@ public final class Forms {
         Section section(String key, String title, String subtitle) {
             Section s = new Section(key, title, subtitle);
             s.formId = id;
+            s.checklist = checklist;
             sections.add(s);
             return s;
         }
@@ -179,6 +188,83 @@ public final class Forms {
         return prefix + fixture.toLowerCase().replaceAll("[^a-z]", "");
     }
 
+    // ---------------- inspection types ----------------
+
+    public static final String WDO = "wdo", SEWER = "sewer", MOLD = "mold", ROOF = "roof", CHIMNEY = "chimney",
+            STRUCTURAL = "structural", HVAC = "hvac", ELECTRICAL = "electrical", PLUMBING = "plumbing",
+            LEAD = "lead", ASBESTOS = "asbestos", POOL = "pool", SOIL = "soil", OIL_TANK = "oiltank";
+
+    /** Every inspection type, in the order offered to the inspector. */
+    public static final String[] INSPECTION_TYPES = {GENERAL, FOUR_POINT, WIND, WDO, SEWER, MOLD, ROOF, CHIMNEY,
+            STRUCTURAL, HVAC, ELECTRICAL, PLUMBING, LEAD, ASBESTOS, POOL, SOIL, OIL_TANK};
+
+    /** Types on inspections created before types were chosen, and for inspectors with none selected. */
+    public static final String[] DEFAULT_TYPES = {GENERAL, FOUR_POINT, WIND};
+
+    /** Key on an inspection holding the ids of the inspection types it covers. */
+    public static final String TYPES_KEY = "insp.types";
+
+    /** Type titles as shown in the inspector's licensed types. */
+    static String[] typeTitles() {
+        String[] out = new String[INSPECTION_TYPES.length];
+        for (int i = 0; i < out.length; i++) out[i] = typeTitle(INSPECTION_TYPES[i]);
+        return out;
+    }
+
+    static String typeTitle(String id) {
+        switch (id) {
+            case GENERAL: return "General Home Inspection";
+            case FOUR_POINT: return "4-Point Inspection";
+            case WIND: return "Wind Mitigation";
+            case WDO: return "Pest / Termite (WDO)";
+            case SEWER: return "Sewer / Septic";
+            case MOLD: return "Mold";
+            case ROOF: return "Roof";
+            case CHIMNEY: return "Chimney";
+            case STRUCTURAL: return "Foundation / Structural";
+            case HVAC: return "HVAC";
+            case ELECTRICAL: return "Electrical";
+            case PLUMBING: return "Plumbing / Water Quality";
+            case LEAD: return "Lead-Based Paint";
+            case ASBESTOS: return "Asbestos";
+            case POOL: return "Pool / Spa";
+            case SOIL: return "Soil / Landscaping";
+            case OIL_TANK: return "Underground Oil Tank";
+            default: return id;
+        }
+    }
+
+    public static boolean isType(String id) {
+        for (String t : INSPECTION_TYPES) if (t.equals(id)) return true;
+        return false;
+    }
+
+    /** Ids from a list of type titles (or ids), in registry order. */
+    static List<String> typeIds(List<String> titlesOrIds) {
+        List<String> out = new ArrayList<>();
+        for (String id : INSPECTION_TYPES)
+            if (titlesOrIds.contains(id) || titlesOrIds.contains(typeTitle(id))) out.add(id);
+        return out;
+    }
+
+    /** The inspection types this inspection covers, in registry order. */
+    public static List<String> types(Inspection in) {
+        List<String> ids = in.has(TYPES_KEY) ? typeIds(in.list(TYPES_KEY)) : new ArrayList<String>();
+        if (ids.isEmpty()) ids = java.util.Arrays.asList(DEFAULT_TYPES);
+        return new ArrayList<>(ids);
+    }
+
+    /** Stores licensed types on an inspector record (as titles, the options of ip.types). */
+    static void setLicensedTypes(Inspection ip, List<String> ids) {
+        org.json.JSONArray a = new org.json.JSONArray();
+        for (String id : typeIds(ids)) a.put(typeTitle(id));
+        ip.setUser("ip.types", a);
+    }
+
+    public static void setTypes(Inspection in, List<String> ids) {
+        in.setUser(TYPES_KEY, new org.json.JSONArray(typeIds(ids)));
+    }
+
     // ---------------- registry ----------------
 
     private static Map<String, Form> forms;
@@ -205,6 +291,7 @@ public final class Forms {
         forms.put(GENERAL, buildGeneral());
         forms.put(FOUR_POINT, buildFourPoint());
         forms.put(WIND, buildWind());
+        for (Form f : InspectionTypes.build()) forms.put(f.id, f);
         fieldIndex = new HashMap<>();
         sectionIndex = new HashMap<>();
         for (Form f : forms.values()) {
@@ -218,7 +305,7 @@ public final class Forms {
     // ---------------- Property & client ----------------
 
     private static Form buildInfo() {
-        Form f = new Form(INFO, "Property & Client", "Property", "Shared by all three reports", Ui.PRIMARY);
+        Form f = new Form(INFO, "Property & Client", "Property", "Shared by every report", Ui.PRIMARY);
         Section s = f.section("info", "Property & Client", "Used on every report");
         s.noPhotos();
         s.header("Client");
@@ -294,8 +381,24 @@ public final class Forms {
         });
         s.text("info.zip", "Zip");
         s.header("2. Services to be performed");
-        s.multi("pa.services", "Check all that apply", SERVICES);
-        s.text("pa.otherDesc", "Other inspection (e.g. 4-Point, Wind Mitigation)");
+        s.multi("pa.services", "Check all that apply", SERVICES).map(new Mapper() {
+            @Override
+            public Object map(Inspection in) {
+                List<String> out = new ArrayList<>();
+                List<String> t = types(in);
+                if (t.contains(GENERAL)) out.add(SERVICES[0]);
+                if (t.size() > (t.contains(GENERAL) ? 1 : 0)) out.add(SERVICES[1]);
+                return out.isEmpty() ? null : out;
+            }
+        });
+        s.text("pa.otherDesc", "Other inspection").map(new Mapper() {
+            @Override
+            public Object map(Inspection in) {
+                List<String> out = new ArrayList<>();
+                for (String id : types(in)) if (!GENERAL.equals(id)) out.add(form(id).title);
+                return out.isEmpty() ? null : joinNonEmpty(out.toArray(new String[0]));
+            }
+        });
         s.header("3. Inspection fee");
         s.num("pa.feeHome", "Home inspection ($)").map(new Mapper() {
             @Override
@@ -383,6 +486,7 @@ public final class Forms {
         s.text("ip.license", "License / certificate #");
         s.text("ip.issuer", "Issuing body (e.g. Florida DBPR)");
         s.date("ip.expires", "License expiration");
+        s.multi("ip.types", "Licensed inspection types", typeTitles());
         s.text("ip.phone", "Phone");
         s.text("ip.email", "Email");
         s.sig("ip.signature", "Saved signature (applied to agreements and reports)");
@@ -402,6 +506,7 @@ public final class Forms {
     private static Form buildGeneral() {
         Form f = new Form(GENERAL, "General Home Inspection", "General",
                 "Walk the home system by system. Photos, markup and dictated notes.", Ui.GENERAL);
+        f.checklist = true;
         Section s;
 
         s = f.section("g.ext", "Exterior & Grounds", "Grading, siding, trim, walkways, decks");
