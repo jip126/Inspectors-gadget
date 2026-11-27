@@ -320,6 +320,7 @@ public final class Forms {
         s.header("Property");
         s.text("info.address", "Address inspected");
         s.text("info.city", "City");
+        s.choice("info.state", "State", StateForms.STATES);
         s.text("info.zip", "ZIP");
         s.text("info.county", "County");
         s.num("info.yearBuilt", "Actual year built");
@@ -377,7 +378,10 @@ public final class Forms {
         s.text("info.city", "City");
         s.text("pa.state", "State").map(new Mapper() {
             @Override
-            public Object map(Inspection in) { return "FL"; }
+            public Object map(Inspection in) {
+                String st = StateForms.stateCode(in.str(StateForms.PROPERTY_STATE_KEY));
+                return st.length() > 0 ? st : "FL";
+            }
         });
         s.text("info.zip", "Zip");
         s.header("2. Services to be performed");
@@ -486,6 +490,8 @@ public final class Forms {
         s.text("ip.license", "License / certificate #");
         s.text("ip.issuer", "Issuing body (e.g. Florida DBPR)");
         s.date("ip.expires", "License expiration");
+        s.choice(StateForms.LICENSE_STATE_KEY, "License state", StateForms.STATES);
+        s.multi(StateForms.LICENSES_KEY, "Licenses held", StateForms.licenseTitles());
         s.multi("ip.types", "Licensed inspection types", typeTitles());
         s.text("ip.phone", "Phone");
         s.text("ip.email", "Email");

@@ -8,7 +8,8 @@ Android app for home inspectors:
 4. **Wind mitigation.** Follows OIR-B1-1802 Rev. 01/12. Answers are suggested from the General findings.
 
 5. **E-signature.** Sends the agreement to the client for remote signing through BoldSign or DocuSign. The signed PDF and status come back into the inspection automatically.
-6. **Subscriptions.** One free trial inspection, then a monthly or annual subscription. Demo inspections can be explored but not exported.
+6. **State forms.** `StateForms` catalogs 47 official state and national forms (from the 2026-11-27 research), each tied to a state, an inspection type and the licenses that may issue it. The property state and the inspector's license state and licenses decide which forms apply and flag ones the inspector can't issue. Field mapping and form layouts are not built yet.
+7. **Subscriptions.** One free trial inspection, then a monthly or annual subscription. Demo inspections can be explored but not exported.
 
 There is a company profile (with an optional logo) and a roster of inspectors (license type and number, issuing body, expiry, saved signature). The selected inspector's details go on every report. Reports export as PDFs, and photos are compressed so the files fit in an email.
 
