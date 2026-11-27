@@ -30,6 +30,9 @@ import static org.junit.Assert.*;
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 public class SubscriptionTest {
 
+    @org.junit.Before
+    public void signedIn() { Auth.setUnlockedForTest(true); }
+
     private static Context ctx() { return RuntimeEnvironment.getApplication(); }
 
     private static Inspection newInspection(Context c) {

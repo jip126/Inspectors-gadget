@@ -107,6 +107,13 @@ public class MainActivity extends Activity {
             public void onClick(View v) { PaywallActivity.open(MainActivity.this, null); }
         });
         hero.addView(plan, Ui.matchWrap(this, 8));
+        Button account = Ui.button(this, "👤  " + Auth.email(this), Ui.SILVER, false);
+        account.setBackground(Ui.rounded(this, 0x00000000, 0x55C0C7D0, 10));
+        account.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) { accountMenu(); }
+        });
+        hero.addView(account, Ui.matchWrap(this, 8));
         root.addView(hero);
 
         LinearLayout list = Ui.vbox(this);
@@ -263,6 +270,44 @@ public class MainActivity extends Activity {
                 ViewGroup.LayoutParams.WRAP_CONTENT);
         lp.topMargin = Ui.dp(this, top);
         return lp;
+    }
+
+    private void accountMenu() {
+        final boolean bio = Biometrics.isEnabled(this);
+        final boolean canBio = bio || Biometrics.available(this) != Biometrics.NONE;
+        final List<String> items = new ArrayList<>();
+        if (canBio) items.add(bio ? "Turn off biometric login" : "Turn on biometric login");
+        items.add("Log out");
+        String title = Auth.name(this).length() > 0 ? Auth.name(this) : Auth.email(this);
+        new AlertDialog.Builder(this).setTitle(title)
+                .setItems(items.toArray(new String[0]), new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int w) {
+                        String item = items.get(w);
+                        if (item.equals("Log out")) {
+                            Auth.logout(MainActivity.this);
+                            LoginActivity.open(MainActivity.this, true);
+                        } else if (bio) {
+                            Biometrics.disable(MainActivity.this);
+                            Toast.makeText(MainActivity.this, "Biometric login off", Toast.LENGTH_SHORT).show();
+                        } else {
+                            Biometrics.enable(MainActivity.this, new Biometrics.Listener() {
+                                @Override
+                                public void success(String token) {
+                                    Toast.makeText(MainActivity.this, "Biometric login on", Toast.LENGTH_SHORT).show();
+                                }
+
+                                @Override
+                                public void cancelled() {}
+
+                                @Override
+                                public void failed(String message) {
+                                    Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
+                                }
+                            });
+                        }
+                    }
+                }).setNegativeButton("Cancel", null).show();
     }
 
     private void confirmDelete(final Inspection in) {
