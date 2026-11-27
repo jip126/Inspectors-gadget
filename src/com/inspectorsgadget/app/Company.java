@@ -128,6 +128,27 @@ public final class Company {
         return roster.isEmpty() ? null : roster.get(0);
     }
 
+    /**
+     * The roster inspector who is signed in: the one chosen in the account menu, else the one whose
+     * email matches the login, else the first on the roster.
+     */
+    public static Inspection signedInInspector(Context c) {
+        List<Inspection> roster = inspectors(c);
+        if (roster.isEmpty()) return null;
+        String email = Auth.email(c);
+        String linked = Auth.prefs(c).getString("inspector." + email, "");
+        for (Inspection ip : roster) if (ip.id.equals(linked)) return ip;
+        for (Inspection ip : roster) {
+            if (email.length() > 0 && email.equalsIgnoreCase(ip.str("ip.email").trim())) return ip;
+        }
+        return roster.get(0);
+    }
+
+    /** Links the signed-in account to a roster inspector. */
+    public static void setSignedInInspector(Context c, String inspectorId) {
+        Auth.prefs(c).edit().putString("inspector." + Auth.email(c), inspectorId).apply();
+    }
+
     public static Inspection addInspector(Context c) {
         String id = INSPECTOR_PREFIX + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
         Inspection ip = Store.createWithId(c, id);

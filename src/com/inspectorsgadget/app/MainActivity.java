@@ -54,14 +54,6 @@ public class MainActivity extends Activity {
         logo.setContentDescription("The Inspector's Gadget");
         hero.addView(logo, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT));
-        StringBuilder licensed = new StringBuilder();
-        for (String t : Company.licensedTypes(Company.inspectorFor(this, null))) {
-            if (licensed.length() > 0) licensed.append(" \u00B7 ");
-            licensed.append(Forms.form(t).shortTitle);
-        }
-        TextView tag = Ui.text(this, licensed.toString(), 14, Ui.SILVER, false);
-        tag.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
-        hero.addView(tag, Ui.matchWrap(this, 2));
 
         LinearLayout actions = Ui.hbox(this);
         actions.setPadding(0, Ui.dp(this, 16), 0, 0);
@@ -89,6 +81,14 @@ public class MainActivity extends Activity {
         });
         actions.addView(demo, Ui.weight(this, 1f, 0));
         hero.addView(actions);
+        boolean pro = Account.isSubscribed(this);
+        Button plan = Ui.button(this, (pro ? "★  " : "☆  ") + Account.summary(this), pro ? Ui.ACCENT : Ui.SILVER, false);
+        plan.setBackground(Ui.rounded(this, 0x00000000, pro ? Ui.ACCENT : 0x55C0C7D0, 10));
+        plan.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) { PaywallActivity.open(MainActivity.this, null); }
+        });
+        hero.addView(plan, Ui.matchWrap(this, 10));
         Inspection co = Company.profile(this);
         int n = Company.inspectors(this).size();
         Button company = Ui.button(this, "🏢  " + (co.str("co.name").length() > 0 ? co.str("co.name") : "Company")
@@ -98,22 +98,8 @@ public class MainActivity extends Activity {
             @Override
             public void onClick(View v) { startActivity(new Intent(MainActivity.this, CompanyActivity.class)); }
         });
-        hero.addView(company, Ui.matchWrap(this, 10));
-        boolean pro = Account.isSubscribed(this);
-        Button plan = Ui.button(this, (pro ? "★  " : "☆  ") + Account.summary(this), pro ? Ui.ACCENT : Ui.SILVER, false);
-        plan.setBackground(Ui.rounded(this, 0x00000000, pro ? Ui.ACCENT : 0x55C0C7D0, 10));
-        plan.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) { PaywallActivity.open(MainActivity.this, null); }
-        });
-        hero.addView(plan, Ui.matchWrap(this, 8));
-        Button account = Ui.button(this, "👤  " + Auth.email(this), Ui.SILVER, false);
-        account.setBackground(Ui.rounded(this, 0x00000000, 0x55C0C7D0, 10));
-        account.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) { accountMenu(); }
-        });
-        hero.addView(account, Ui.matchWrap(this, 8));
+        hero.addView(company, Ui.matchWrap(this, 8));
+        hero.addView(personCard(), Ui.matchWrap(this, 8));
         root.addView(hero);
 
         LinearLayout list = Ui.vbox(this);
@@ -186,7 +172,8 @@ public class MainActivity extends Activity {
         box.addView(client);
 
         final List<Inspection> roster = Company.inspectors(this);
-        final String[] inspectorId = {roster.isEmpty() ? "" : roster.get(0).id};
+        Inspection me = Company.signedInInspector(this);
+        final String[] inspectorId = {me == null ? "" : me.id};
         final List<String> selected = new ArrayList<>();
         final FlowLayout typeChips = new FlowLayout(this);
         if (roster.size() > 1) {
@@ -210,7 +197,7 @@ public class MainActivity extends Activity {
         }
         box.addView(Ui.text(this, "Inspection types", 14, Ui.TEXT, true), Ui.matchWrap(this, 14));
         box.addView(typeChips, Ui.matchWrap(this, 6));
-        fillTypeChips(typeChips, roster.isEmpty() ? null : roster.get(0), selected);
+        fillTypeChips(typeChips, me, selected);
 
         final AlertDialog dlg = new AlertDialog.Builder(this).setTitle("New inspection").setView(sv)
                 .setPositiveButton("Start", null).setNegativeButton("Cancel", null).create();
@@ -272,19 +259,72 @@ public class MainActivity extends Activity {
         return lp;
     }
 
+    /** Signed-in inspector's name with the inspection types on their profile. */
+    private View personCard() {
+        Inspection ip = Company.signedInInspector(this);
+        String name = ip != null ? Company.inspectorName(ip) : Auth.name(this);
+        if (name.length() == 0) name = Auth.email(this);
+        LinearLayout card = Ui.vbox(this);
+        card.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
+        card.setBackground(new android.graphics.drawable.RippleDrawable(
+                android.content.res.ColorStateList.valueOf(0x33FFFFFF), Ui.rounded(this, 0x00000000, 0x55C0C7D0, 10), null));
+        int ph = Ui.dp(this, 14);
+        card.setPadding(ph, Ui.dp(this, 10), ph, Ui.dp(this, 10));
+        card.setMinimumHeight(Ui.dp(this, 46));
+        TextView who = Ui.text(this, "👤  " + name, 15, Ui.SILVER, true);
+        who.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
+        card.addView(who);
+        StringBuilder licensed = new StringBuilder();
+        for (String t : Company.licensedTypes(ip)) {
+            if (licensed.length() > 0) licensed.append(" \u00B7 ");
+            licensed.append(Forms.form(t).shortTitle);
+        }
+        TextView types = Ui.text(this, licensed.toString(), 13, 0xFF9AA4B2, false);
+        types.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
+        card.addView(types, Ui.matchWrap(this, 3));
+        card.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) { accountMenu(); }
+        });
+        return card;
+    }
+
+    private void chooseInspector() {
+        final List<Inspection> roster = Company.inspectors(this);
+        String[] names = new String[roster.size()];
+        Inspection current = Company.signedInInspector(this);
+        int checked = -1;
+        for (int i = 0; i < roster.size(); i++) {
+            names[i] = Company.inspectorName(roster.get(i));
+            if (current != null && roster.get(i).id.equals(current.id)) checked = i;
+        }
+        new AlertDialog.Builder(this).setTitle("Signed in as")
+                .setSingleChoiceItems(names, checked, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int w) {
+                        Company.setSignedInInspector(MainActivity.this, roster.get(w).id);
+                        d.dismiss();
+                        build();
+                    }
+                }).setNegativeButton("Cancel", null).show();
+    }
+
     private void accountMenu() {
         final boolean bio = Biometrics.isEnabled(this);
         final boolean canBio = bio || Biometrics.available(this) != Biometrics.NONE;
         final List<String> items = new ArrayList<>();
+        if (Company.inspectors(this).size() > 1) items.add("Change inspector");
         if (canBio) items.add(bio ? "Turn off biometric login" : "Turn on biometric login");
         items.add("Log out");
-        String title = Auth.name(this).length() > 0 ? Auth.name(this) : Auth.email(this);
+        String title = Auth.email(this);
         new AlertDialog.Builder(this).setTitle(title)
                 .setItems(items.toArray(new String[0]), new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface d, int w) {
                         String item = items.get(w);
-                        if (item.equals("Log out")) {
+                        if (item.equals("Change inspector")) {
+                            chooseInspector();
+                        } else if (item.equals("Log out")) {
                             Auth.logout(MainActivity.this);
                             LoginActivity.open(MainActivity.this, true);
                         } else if (bio) {

@@ -190,4 +190,18 @@ public class LoginTest {
         assertTrue("fingerprint button", found);
         shot(login, "screen_26_login_biometric.png");
     }
+
+    @Test
+    public void signedInInspectorFollowsLoginEmailThenChoice() {
+        Inspection first = Company.inspectors(ctx()).get(0);
+        Inspection second = Company.addInspector(ctx());
+        second.setUser("ip.name", "Pat Owner");
+        second.setUser("ip.email", "Owner@Example.com");
+        Store.save(second);
+        assertEquals(first.id, Company.signedInInspector(ctx()).id);
+        Auth.prefs(ctx()).edit().putString("session.email", "owner@example.com").apply();
+        assertEquals(second.id, Company.signedInInspector(ctx()).id);
+        Company.setSignedInInspector(ctx(), first.id);
+        assertEquals(first.id, Company.signedInInspector(ctx()).id);
+    }
 }
