@@ -26,5 +26,8 @@ public final class Config {
     /** Demo mode: seconds before a simulated client signs an e-signature request. */
     public static final int DEMO_SIGN_DELAY_SECONDS = 20;
 
+    /** GitHub repository whose latest release is offered by Settings, Check for updates (see publish-update.bat). */
+    public static final String UPDATE_REPO = "jip126/inspectors-gadget";
+
     public static boolean relayConfigured() { return RELAY_URL.length() > 0; }
 }
