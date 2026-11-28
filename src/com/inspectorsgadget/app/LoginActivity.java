@@ -183,6 +183,10 @@ public class LoginActivity extends Activity {
         } else {
             confirm = null;
             name = null;
+            if (Config.DEMO_ADMIN) {
+                email.setText(Config.DEMO_ADMIN_EMAIL);
+                password.setText(Config.DEMO_ADMIN_PASSWORD);
+            }
         }
         EditText lastField = creating ? confirm : password;
         lastField.setImeOptions(EditorInfo.IME_ACTION_DONE);
