@@ -49,7 +49,16 @@ public class StateFormsTest {
     @Test
     public void catalogIsComplete() {
         List<StateForms.OfficialForm> all = StateForms.all();
-        assertEquals(47, all.size());
+        assertEquals(48, all.size());
+        // radon inspector license, and radon inspections map to it
+        assertTrue(Arrays.asList(StateForms.licenseTitles()).contains("Radon inspector"));
+        assertEquals(Arrays.asList(StateForms.RADON), StateForms.get("all-ansi-aarst-mah").licenses);
+        assertEquals(Forms.RADON, StateForms.get("all-ansi-aarst-mah").type);
+        // license and property state are dropdowns showing state names
+        Forms.Field ls = Forms.field(StateForms.LICENSE_STATE_KEY);
+        assertTrue(ls.dropdown);
+        assertEquals("Florida", ls.optionLabel(Arrays.asList(ls.options).indexOf("FL")));
+        assertTrue(Forms.field(StateForms.PROPERTY_STATE_KEY).dropdown);
         Set<String> states = new HashSet<>(Arrays.asList(StateForms.STATES));
         states.add(StateForms.ALL);
         for (StateForms.OfficialForm f : all) {

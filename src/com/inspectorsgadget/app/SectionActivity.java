@@ -25,7 +25,10 @@ import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.ScrollView;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -204,7 +207,7 @@ public class SectionActivity extends Activity {
                 break;
             case Forms.CHOICE:
             case Forms.MULTI:
-                control = choiceInput(f);
+                control = f.dropdown && f.type == Forms.CHOICE ? dropdownInput(f) : choiceInput(f);
                 break;
             case Forms.PICK_INSPECTOR:
                 control = inspectorPicker(f);
@@ -400,6 +403,51 @@ public class SectionActivity extends Activity {
             }
         });
         return t;
+    }
+
+    private View dropdownInput(final Forms.Field f) {
+        final List<String> values = new ArrayList<>();
+        final List<String> labels = new ArrayList<>();
+        values.add("");
+        labels.add("");
+        for (int i = 0; i < f.options.length; i++) {
+            values.add(f.options[i]);
+            labels.add(f.optionLabel(i));
+        }
+        final Spinner sp = new Spinner(this, Spinner.MODE_DROPDOWN);
+        sp.setBackground(Ui.rounded(this, 0xFFF8FAFC, Ui.BORDER, 8));
+        final int pad = Ui.dp(this, 10), vpad = Ui.dp(this, 12);
+        ArrayAdapter<String> ad = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, labels) {
+            @Override
+            public View getView(int pos, View convert, ViewGroup parent) {
+                TextView t = Ui.text(SectionActivity.this, (pos == 0 ? "" : labels.get(pos) + "  ") + "\u25BE", 15,
+                        Ui.TEXT, false);
+                t.setPadding(pad, vpad, pad, vpad);
+                return t;
+            }
+
+            @Override
+            public View getDropDownView(int pos, View convert, ViewGroup parent) {
+                TextView t = Ui.text(SectionActivity.this, pos == 0 ? " " : labels.get(pos), 16, Ui.TEXT, false);
+                t.setPadding(Ui.dp(SectionActivity.this, 16), vpad, Ui.dp(SectionActivity.this, 16), vpad);
+                t.setBackgroundColor(Color.WHITE);
+                return t;
+            }
+        };
+        sp.setAdapter(ad);
+        int cur = values.indexOf(insp.str(f.key));
+        sp.setSelection(Math.max(cur, 0), false);
+        sp.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
+                String v = values.get(pos);
+                if (!v.equals(insp.str(f.key))) changed(f, v);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
+        return sp;
     }
 
     private View choiceInput(final Forms.Field f) {

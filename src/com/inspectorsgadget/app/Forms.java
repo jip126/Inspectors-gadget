@@ -44,6 +44,10 @@ public final class Forms {
         public String formId;
         /** Item belongs to a checklist inspection (own photos and a dictated comment). */
         boolean checklistItem;
+        /** Single choice shown as a dropdown instead of chips. */
+        public boolean dropdown;
+        /** Text shown for each option in a dropdown (same order as options); null shows the options. */
+        public String[] optionLabels;
 
         Field(String key, String label, int type, String[] options) {
             this.key = key;
@@ -56,6 +60,16 @@ public final class Forms {
         public Field hint(String h) { hint = h; return this; }
         public Field map(Mapper m) { mapper = m; return this; }
         public Field flag(String... f) { flags = f; return this; }
+        public Field dropdown(String... labels) {
+            dropdown = true;
+            optionLabels = labels.length > 0 ? labels : null;
+            return this;
+        }
+
+        /** Display text of an option. */
+        public String optionLabel(int i) {
+            return optionLabels != null && i < optionLabels.length ? optionLabels[i] : options[i];
+        }
 
         /** Pairs of "general value", "this form's value". */
         public Field tr(String... pairs) {
@@ -192,11 +206,11 @@ public final class Forms {
 
     public static final String WDO = "wdo", SEWER = "sewer", MOLD = "mold", ROOF = "roof", CHIMNEY = "chimney",
             STRUCTURAL = "structural", HVAC = "hvac", ELECTRICAL = "electrical", PLUMBING = "plumbing",
-            LEAD = "lead", ASBESTOS = "asbestos", POOL = "pool", SOIL = "soil", OIL_TANK = "oiltank";
+            LEAD = "lead", ASBESTOS = "asbestos", RADON = "radon", POOL = "pool", SOIL = "soil", OIL_TANK = "oiltank";
 
     /** Every inspection type, in the order offered to the inspector. */
     public static final String[] INSPECTION_TYPES = {GENERAL, FOUR_POINT, WIND, WDO, SEWER, MOLD, ROOF, CHIMNEY,
-            STRUCTURAL, HVAC, ELECTRICAL, PLUMBING, LEAD, ASBESTOS, POOL, SOIL, OIL_TANK};
+            STRUCTURAL, HVAC, ELECTRICAL, PLUMBING, LEAD, ASBESTOS, RADON, POOL, SOIL, OIL_TANK};
 
     /** Types on inspections created before types were chosen, and for inspectors with none selected. */
     public static final String[] DEFAULT_TYPES = {GENERAL, FOUR_POINT, WIND};
@@ -227,6 +241,7 @@ public final class Forms {
             case PLUMBING: return "Plumbing / Water Quality";
             case LEAD: return "Lead-Based Paint";
             case ASBESTOS: return "Asbestos";
+            case RADON: return "Radon";
             case POOL: return "Pool / Spa";
             case SOIL: return "Soil / Landscaping";
             case OIL_TANK: return "Underground Oil Tank";
@@ -320,7 +335,7 @@ public final class Forms {
         s.header("Property");
         s.text("info.address", "Address inspected");
         s.text("info.city", "City");
-        s.choice("info.state", "State", StateForms.STATES);
+        s.choice("info.state", "State", StateForms.STATES).dropdown(StateForms.stateNames());
         s.text("info.zip", "ZIP");
         s.text("info.county", "County");
         s.num("info.yearBuilt", "Actual year built");
@@ -490,7 +505,7 @@ public final class Forms {
         s.text("ip.license", "License / certificate #");
         s.text("ip.issuer", "Issuing body (e.g. Florida DBPR)");
         s.date("ip.expires", "License expiration");
-        s.choice(StateForms.LICENSE_STATE_KEY, "License state", StateForms.STATES);
+        s.choice(StateForms.LICENSE_STATE_KEY, "License state", StateForms.STATES).dropdown(StateForms.stateNames());
         s.multi(StateForms.LICENSES_KEY, "Licenses held", StateForms.licenseTitles());
         s.multi("ip.types", "Licensed inspection types", typeTitles());
         s.text("ip.phone", "Phone");

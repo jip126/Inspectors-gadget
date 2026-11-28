@@ -29,6 +29,7 @@ final class InspectionTypes {
         out.add(plumbing());
         out.add(lead());
         out.add(asbestos());
+        out.add(radon());
         out.add(pool());
         out.add(soil());
         out.add(oilTank());
@@ -716,6 +717,60 @@ final class InspectionTypes {
         s.choice("asb.action", "Response action", "No action", "Operations & maintenance", "Repair / encapsulate",
                 "Abatement before renovation").flag("Repair / encapsulate", "Abatement before renovation");
         summary(f, "asb");
+        return f;
+    }
+
+    // ---------------------------------------------------------------- Radon
+
+    private static Form radon() {
+        Form f = form(RADON, "Radon Inspection", "Radon",
+                "Closed-house conditions, devices, results, mitigation", 0xFF8A5A14,
+                "Short-term radon measurement performed under ANSI/AARST MAH protocols. Results reflect conditions "
+                        + "during the test period only. The EPA action level is 4.0 pCi/L; mitigation is recommended "
+                        + "at or above that level and should be considered between 2.0 and 4.0 pCi/L.");
+        Section s = f.section("rad.scope", "Scope", "Purpose, license, test type");
+        s.choice("rad.purpose", "Purpose", "Real estate transaction", "Homeowner test", "Post-mitigation test",
+                "New construction");
+        s.text("rad.cert", "Radon license / NRPP or NRSB cert #");
+        s.choice("rad.testType", "Test type", "Continuous radon monitor (CRM)", "Charcoal canister",
+                "Electret ion chamber", "Alpha track");
+        s.choice("rad.duration", "Test duration", "48 hours", "72 hours", "96 hours", "90 days or more");
+        s.text("rad.lab", "Laboratory (if passive devices)");
+
+        s = f.section("rad.conditions", "Test Conditions", "Closed-house conditions and placement");
+        s.choice("rad.closed12", "Closed-house conditions 12 hours before test", YN).flag("No");
+        s.choice("rad.closedDuring", "Closed-house conditions maintained during test", YN).flag("No");
+        s.choice("rad.tamper", "Signs of tampering or interference", YN).flag("Yes");
+        s.choice("rad.weather", "Severe weather during test", YN).flag("Yes");
+        s.choice("rad.hvac", "HVAC operating normally", YN);
+        s.choice("rad.level", "Lowest livable level tested", "Basement", "First floor", "Crawlspace", "Slab level");
+        s.text("rad.location", "Device location (room)");
+        s.choice("rad.existingSystem", "Existing mitigation system", YN);
+
+        s = f.section("rad.devices", "Devices & Results", "Placement times and readings");
+        for (int i = 1; i <= 2; i++) {
+            String k = "rad.d" + i;
+            s.header("Device " + i);
+            s.text(k + ".serial", "Device serial #");
+            s.text(k + ".start", "Start (date and time)");
+            s.text(k + ".end", "End (date and time)");
+            s.num(k + ".result", "Result (pCi/L)");
+        }
+        s.num("rad.average", "Average result (pCi/L)");
+        s.choice("rad.result", "Result", "Below 2.0 pCi/L", "2.0 to 3.9 pCi/L", "4.0 pCi/L or above")
+                .flag("4.0 pCi/L or above");
+
+        s = f.section("rad.system", "Mitigation System", "Existing system condition");
+        s.choice("rad.sys.fan", "Fan operating", YN).flag("No");
+        s.choice("rad.sys.manometer", "Manometer reading present", YN).flag("No");
+        s.choice("rad.sys.label", "System labeled", YN).flag("No");
+        s.cond("rad.sys.piping", "Piping and discharge");
+
+        s = f.section("rad.summary", "Summary", "Result and recommendations");
+        s.noPhotos();
+        s.choice("rad.recommend", "Recommendation", "No action", "Consider mitigation", "Mitigation recommended",
+                "Retest recommended").flag("Mitigation recommended", "Retest recommended");
+        s.notes("rad.summary.notes", "Summary & recommendations");
         return f;
     }
 
