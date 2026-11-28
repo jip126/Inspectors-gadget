@@ -161,7 +161,9 @@ public class LoginTest {
         final Activity back = Robolectric.buildActivity(LoginActivity.class, again).setup().get();
         List<EditText> g = fields(back);
         assertEquals(2, g.size());
-        assertEquals("justin@360homeinspections.com", g.get(0).getText().toString());
+        assertEquals(com.inspectorsgadget.app.Config.DEMO_ADMIN ? com.inspectorsgadget.app.Config.DEMO_ADMIN_EMAIL
+                : "justin@360homeinspections.com", g.get(0).getText().toString());
+        g.get(0).setText("justin@360homeinspections.com");
         g.get(1).setText("wrong pass");
         text(back, "Log In").performClick();
         waitFor(() -> text(back, "Incorrect email or password") != null);
@@ -214,5 +216,17 @@ public class LoginTest {
         assertTrue(p.exists("ADMIN@ig.app "));
         assertFalse(p.signIn(com.inspectorsgadget.app.Config.DEMO_ADMIN_EMAIL, "wrongpass").ok);
         assertFalse(p.register("X", com.inspectorsgadget.app.Config.DEMO_ADMIN_EMAIL, "something1").ok);
+    }
+
+    @Test
+    public void demoAdminPrefilledSoLogInIsOneTap() throws Exception {
+        final Activity a = Robolectric.buildActivity(LoginActivity.class).setup().get();
+        List<EditText> f = fields(a);
+        assertEquals(com.inspectorsgadget.app.Config.DEMO_ADMIN_EMAIL, f.get(0).getText().toString());
+        assertEquals(com.inspectorsgadget.app.Config.DEMO_ADMIN_PASSWORD, f.get(1).getText().toString());
+        shot(a, "screen_28_login_demo_admin.png");
+        text(a, "Log In").performClick();
+        waitFor(() -> Auth.isUnlocked());
+        assertEquals(com.inspectorsgadget.app.Config.DEMO_ADMIN_EMAIL, Auth.email(ctx()));
     }
 }
