@@ -204,4 +204,15 @@ public class LoginTest {
         Company.setSignedInInspector(ctx(), first.id);
         assertEquals(first.id, Company.signedInInspector(ctx()).id);
     }
+
+    @Test
+    public void demoAdminSignsInOnFreshInstall() {
+        Auth.Provider p = Auth.provider(ctx());
+        Auth.Result r = p.signIn(com.inspectorsgadget.app.Config.DEMO_ADMIN_EMAIL, com.inspectorsgadget.app.Config.DEMO_ADMIN_PASSWORD);
+        assertTrue(r.error, r.ok);
+        assertEquals(com.inspectorsgadget.app.Config.DEMO_ADMIN_NAME, r.name);
+        assertTrue(p.exists("ADMIN@ig.app "));
+        assertFalse(p.signIn(com.inspectorsgadget.app.Config.DEMO_ADMIN_EMAIL, "wrongpass").ok);
+        assertFalse(p.register("X", com.inspectorsgadget.app.Config.DEMO_ADMIN_EMAIL, "something1").ok);
+    }
 }

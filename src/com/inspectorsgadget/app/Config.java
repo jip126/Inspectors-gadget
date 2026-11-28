@@ -29,5 +29,15 @@ public final class Config {
     /** GitHub repository whose latest release is offered by Settings, Check for updates (see publish-update.bat). */
     public static final String UPDATE_REPO = "jip126/inspectors-gadget";
 
+    /**
+     * Built-in admin account for the demo period, so a fresh install can sign in without creating an
+     * account. Remove before release: set DEMO_ADMIN to false (the account is then neither created
+     * nor accepted, including one already saved on a device).
+     */
+    public static final boolean DEMO_ADMIN = true;
+    public static final String DEMO_ADMIN_EMAIL = "admin@ig.app";
+    public static final String DEMO_ADMIN_PASSWORD = "admin1234";
+    public static final String DEMO_ADMIN_NAME = "Admin";
+
     public static boolean relayConfigured() { return RELAY_URL.length() > 0; }
 }

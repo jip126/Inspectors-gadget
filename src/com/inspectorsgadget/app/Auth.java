@@ -217,7 +217,27 @@ public final class Auth {
             return c.getSharedPreferences("auth_users", Context.MODE_PRIVATE);
         }
 
+        private static boolean isDemoAdmin(String email) { return Config.DEMO_ADMIN_EMAIL.equals(email); }
+
+        /** Creates the built-in demo admin the first time it is looked up (see {@link Config#DEMO_ADMIN}). */
+        private void seedDemoAdmin() {
+            if (users().contains(Config.DEMO_ADMIN_EMAIL)) return;
+            try {
+                JSONObject u = new JSONObject();
+                u.put("name", Config.DEMO_ADMIN_NAME);
+                setPassword(u, Config.DEMO_ADMIN_PASSWORD);
+                u.put("created", System.currentTimeMillis());
+                u.put("demoAdmin", true);
+                users().edit().putString(Config.DEMO_ADMIN_EMAIL, u.toString()).commit();
+            } catch (Exception ignored) {
+            }
+        }
+
         private JSONObject user(String email) {
+            if (isDemoAdmin(email)) {
+                if (!Config.DEMO_ADMIN) return null;
+                seedDemoAdmin();
+            }
             String s = users().getString(email, "");
             if (s.length() == 0) return null;
             try {
