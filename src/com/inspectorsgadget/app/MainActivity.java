@@ -100,7 +100,23 @@ public class MainActivity extends Activity {
         });
         hero.addView(company, Ui.matchWrap(this, 8));
         hero.addView(personCard(), Ui.matchWrap(this, 8));
-        root.addView(hero);
+        android.widget.FrameLayout heroFrame = new android.widget.FrameLayout(this);
+        heroFrame.addView(hero);
+        TextView gear = Ui.text(this, "\u2699", 24, Ui.SILVER, false);
+        gear.setContentDescription("Settings");
+        gear.setGravity(android.view.Gravity.CENTER);
+        gear.setBackground(new android.graphics.drawable.RippleDrawable(
+                android.content.res.ColorStateList.valueOf(0x33FFFFFF), null, Ui.rounded(this, Color.WHITE, 0, 22)));
+        gear.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) { startActivity(new Intent(MainActivity.this, SettingsActivity.class)); }
+        });
+        android.widget.FrameLayout.LayoutParams gp = new android.widget.FrameLayout.LayoutParams(
+                Ui.dp(this, 44), Ui.dp(this, 44), android.view.Gravity.TOP | android.view.Gravity.END);
+        gp.topMargin = Ui.dp(this, 6);
+        gp.rightMargin = Ui.dp(this, 6);
+        heroFrame.addView(gear, gp);
+        root.addView(heroFrame);
 
         LinearLayout list = Ui.vbox(this);
         int lp = Ui.dp(this, 14);
@@ -315,6 +331,7 @@ public class MainActivity extends Activity {
         final List<String> items = new ArrayList<>();
         if (Company.inspectors(this).size() > 1) items.add("Change inspector");
         if (canBio) items.add(bio ? "Turn off biometric login" : "Turn on biometric login");
+        items.add("Settings");
         items.add("Log out");
         String title = Auth.email(this);
         new AlertDialog.Builder(this).setTitle(title)
@@ -324,6 +341,8 @@ public class MainActivity extends Activity {
                         String item = items.get(w);
                         if (item.equals("Change inspector")) {
                             chooseInspector();
+                        } else if (item.equals("Settings")) {
+                            startActivity(new Intent(MainActivity.this, SettingsActivity.class));
                         } else if (item.equals("Log out")) {
                             Auth.logout(MainActivity.this);
                             LoginActivity.open(MainActivity.this, true);

@@ -35,6 +35,17 @@ The app is plain Java (Java 8 bytecode) and uses only Android framework APIs. It
 
 Signing uses `demo.keystore`, which is not in the repo. Set `KEYSTORE=...` to sign with your own key. If no key is found, `build.sh` generates a new demo key. An APK signed with a different key can't install over an existing install, so keep using one key.
 
+## Publishing updates
+
+Settings, Check for updates reads the latest GitHub release of `Config.UPDATE_REPO`. A release counts as newer when the versionCode in its APK name (`InspectorsGadget-{versionName}-{versionCode}.apk`) is higher than the installed one. The app downloads the APK and opens the system installer.
+
+`publish-update.bat` (Windows) makes those releases. It needs Git, the GitHub CLI signed in (`gh auth login`), and `demo.keystore` in the repo folder (or `KEYSTORE` and `KEYSTORE_PASS`).
+
+- `publish-update.bat`: asks for the new version name, bumps versionCode, builds and signs the APK with the Android SDK (Android Studio's build-tools, a `platforms/android-3x` folder and a JDK 17+), commits and pushes the bump, and creates release `v{versionName}` with the APK.
+- `publish-update.bat path\to\app.apk`: releases an APK that is already built, using the version in `AndroidManifest.xml`.
+
+Every update must be signed with the same key, or Android refuses to install it over the current app.
+
 ## Tests
 
 `test/run.sh` runs Robolectric 4.18.1 tests at SDK 35 against `build/classes`. Two things are needed first:

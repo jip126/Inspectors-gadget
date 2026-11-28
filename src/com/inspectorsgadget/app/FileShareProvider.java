@@ -91,6 +91,7 @@ public class FileShareProvider extends ContentProvider {
         if (p.endsWith(".pdf")) return "application/pdf";
         if (p.endsWith(".jpg") || p.endsWith(".jpeg")) return "image/jpeg";
         if (p.endsWith(".png")) return "image/png";
+        if (p.endsWith(".apk")) return "application/vnd.android.package-archive";
         return "application/octet-stream";
     }
 
