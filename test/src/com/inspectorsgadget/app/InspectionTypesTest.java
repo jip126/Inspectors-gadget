@@ -73,7 +73,7 @@ public class InspectionTypesTest {
 
     @Test
     public void everyTypeHasAChecklistWithItemPhotosAndNoDashes() {
-        assertEquals(17, Forms.INSPECTION_TYPES.length);
+        assertEquals(18, Forms.INSPECTION_TYPES.length);
         for (String id : Forms.INSPECTION_TYPES) {
             Forms.Form f = Forms.form(id);
             assertNotNull(id, f);

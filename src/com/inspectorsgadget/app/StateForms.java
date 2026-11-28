@@ -29,11 +29,11 @@ public final class StateForms {
     public static final String HOME_INSPECTOR = "home", BUILDING_CODE = "codeinsp", CONTRACTOR = "contractor",
             ROOFING_CONTRACTOR = "roofer", ENGINEER = "engineer", ARCHITECT = "architect", OTHER = "other",
             PEST = "pest", SEPTIC = "septic", MOLD_ASSESSOR = "moldassessor", MOLD_REMEDIATOR = "moldremediator",
-            LEAD = "lead", ASBESTOS = "asbestos", FORTIFIED = "fortified", WATER_LAB = "waterlab";
+            LEAD = "lead", ASBESTOS = "asbestos", RADON = "radon", FORTIFIED = "fortified", WATER_LAB = "waterlab";
 
     /** Every license, in the order offered on the inspector profile. */
     public static final String[] LICENSES = {HOME_INSPECTOR, BUILDING_CODE, CONTRACTOR, ROOFING_CONTRACTOR,
-            ENGINEER, ARCHITECT, PEST, SEPTIC, MOLD_ASSESSOR, MOLD_REMEDIATOR, LEAD, ASBESTOS, FORTIFIED,
+            ENGINEER, ARCHITECT, PEST, SEPTIC, MOLD_ASSESSOR, MOLD_REMEDIATOR, LEAD, ASBESTOS, RADON, FORTIFIED,
             WATER_LAB, OTHER};
 
     /** Licenses that are not issued by a state, so they count in any state. */
@@ -60,6 +60,7 @@ public final class StateForms {
             case MOLD_REMEDIATOR: return "Mold remediation contractor";
             case LEAD: return "Lead inspector / risk assessor";
             case ASBESTOS: return "Asbestos inspector";
+            case RADON: return "Radon inspector";
             case FORTIFIED: return "IBHS FORTIFIED evaluator";
             case WATER_LAB: return "Certified water testing laboratory";
             case OTHER: return "Other individual recognized by the insurer";
@@ -131,6 +132,9 @@ public final class StateForms {
             if (STATES[i].equalsIgnoreCase(t) || STATE_NAMES[i].equalsIgnoreCase(t)) return STATES[i];
         return "";
     }
+
+    /** State names, in the order of STATES. */
+    static String[] stateNames() { return STATE_NAMES.clone(); }
 
     public static String stateName(String code) {
         for (int i = 0; i < STATES.length; i++) if (STATES[i].equals(code)) return STATE_NAMES[i];
@@ -215,6 +219,7 @@ public final class StateForms {
         add("all-lead-inspection-risk-assessm", "ALL", Forms.LEAD, "No fixed form (content set by 40 CFR 745.227)", "Lead inspection / risk assessment report", "US EPA / HUD", Status.CONTENT, "Mandatory content", "Any lead inspection or risk assessment by a certified inspector or risk assessor on target housing", "https://www.ecfr.gov/current/title-40/chapter-I/subchapter-R/part-745/subpart-L/section-745.227", Confidence.HIGH, 0, cred(LEAD));
         add("all-epa-hud-sample-disclosure", "ALL", Forms.LEAD, "EPA/HUD sample disclosure", "Disclosure of Information on Lead-Based Paint and Lead-Based Paint Hazards", "US EPA / HUD", Status.SELLER, "Mandatory (seller or landlord form, not the inspector's)", "Sale or lease of pre-1978 housing; inspector reports get attached to it", "https://www.epa.gov/lead/real-estate-disclosure", Confidence.HIGH, 0, cred());
         add("all-fortified-roof-silver-gold", "ALL", Forms.WIND, "FORTIFIED Roof / Silver / Gold", "FORTIFIED Home evaluation and designation certificate", "IBHS (Insurance Institute for Business & Home Safety)", Status.CONDITIONAL, "Conditional", "Triggers mandatory insurer discounts or grants in AL, LA, MS, NC, SC, GA, OK and others; evaluation done by IBHS-certified evaluators", "https://fortifiedhome.org", Confidence.HIGH, 0, cred(FORTIFIED));
+        add("all-ansi-aarst-mah", "ALL", Forms.RADON, "No fixed form (content set by ANSI/AARST MAH)", "Radon measurement report", "AARST / US EPA", Status.CONTENT, "Mandatory content", "Radon testing in single-family homes, including real estate transactions", "https://www.epa.gov/radon/home-buyers-and-sellers-guide-radon", Confidence.MEDIUM, 0, cred(RADON));
         add("all-40-cfr-61-subpart-m-notifica", "ALL", Forms.ASBESTOS, "40 CFR 61 Subpart M notification (state or local agency form)", "Asbestos NESHAP demolition / renovation notification", "US EPA, delegated to state air agencies", Status.CONDITIONAL, "Conditional", "Demolition or large renovations of regulated facilities; not part of single-family home sale inspections", "https://www.epa.gov/asbestos/asbestos-national-emission-standards-hazardous-air-pollutants-neshap", Confidence.MEDIUM, 0, cred(ASBESTOS));
         add("fl-oir-b1-1802", "FL", Forms.WIND, "OIR-B1-1802 (Rev. 01/12)", "Uniform Mitigation Verification Inspection Form", "Florida Office of Insurance Regulation", Status.MANDATORY, "Mandatory", "Required form for any insurer wind mitigation credit (Rule 69O-170.0155, F.A.C.)", "https://floir.com", Confidence.HIGH, 0 | F_UNALTERED, cred(HOME_INSPECTOR, BUILDING_CODE, CONTRACTOR, ENGINEER, ARCHITECT, OTHER));
         add("fl-mit-bt-ii-iii", "FL", Forms.WIND, "MIT-BT II & III", "Building Type II and III Mitigation Verification", "Citizens Property Insurance Corp.", Status.CONDITIONAL, "Mandatory (Citizens)", "Wind credits on mid-rise and high-rise (Type II and III) buildings insured by Citizens", "https://www.citizensfla.com/inspections", Confidence.MEDIUM, 0, cred(BUILDING_CODE, CONTRACTOR, ENGINEER, ARCHITECT));
