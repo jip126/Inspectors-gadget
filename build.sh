@@ -21,6 +21,12 @@ dalvik-exchange --dex --min-sdk-version=26 --output="$OUT/dex/classes.dex" "$OUT
 zipalign -f -p 4 "$OUT/app.unsigned.apk" "$OUT/app.aligned.apk"
 KS=${KEYSTORE:-$PWD/demo.keystore}
 if [ ! -f "$KS" ]; then
+  # A new key means the APK can't install over the current app: the phone has to uninstall it,
+  # which deletes accounts and inspections. Use the existing demo.keystore unless told otherwise.
+  if [ "${ALLOW_NEW_KEY:-}" != 1 ]; then
+    echo "Signing key not found: $KS. Copy demo.keystore here (or set ALLOW_NEW_KEY=1 for a new key)." >&2
+    exit 1
+  fi
   keytool -genkeypair -keystore "$KS" -storepass android -keypass android -alias demo \
     -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Inspector's Gadget Demo" >/dev/null 2>&1
 fi
